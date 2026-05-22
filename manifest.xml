@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BlackmagicDesign>
+    <Plugin>
+        <Id>com.flowtools</Id>
+        <Name>FlowTools</Name>
+        <Version>0.1</Version>
+        <Description>A DaVinci Resolve Studio Workflow Integration with focus on automation and tools for video creation.</Description>
+        <FilePath>main.js</FilePath>
+    </Plugin>
+</BlackmagicDesign>

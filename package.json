@@ -1,0 +1,9 @@
+{
+  "name": "flowtools",
+  "private": true,
+  "version": "1.0.0",
+
+  "scripts": {
+    "deploy": "cd source && npm run build && cd .. && rmdir /s /q app && mkdir app && xcopy source\\dist\\* app\\ /E /I /Y"
+  }
+}
