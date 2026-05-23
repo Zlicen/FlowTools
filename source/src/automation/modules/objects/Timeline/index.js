@@ -3,19 +3,19 @@ import TimelineObjectUI from "./TimelineObjectUI";
 export default {
   id: "object-timeline",
   name: "Timeline",
-  description: "Set, rename, duplicate, delete or render timelines.",
+  description: "Duplicate, rename or delete timelines.",
   categoryId: "objects",
   categoryName: "Objects",
 
   createDefaultSettings() {
     return {
-      action: "set",
+      action: "duplicate",
+
+      findBy: "current",
+      timelineName: "",
 
       name: "",
-      findMode: "current",
-
       newName: "",
-      duplicateName: "",
     };
   },
 

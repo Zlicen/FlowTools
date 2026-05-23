@@ -3,22 +3,28 @@ import MarkerObjectUI from "./MarkerObjectUI";
 export default {
   id: "object-marker",
   name: "Marker",
-  description: "Create, set, rename, delete, move or duplicate timeline markers.",
+  description: "Add, move, duplicate, rename, delete, color or note markers.",
   categoryId: "objects",
   categoryName: "Objects",
 
   createDefaultSettings() {
     return {
-      action: "set",
+      action: "add",
+
+      position: "currentPlayhead",
+      frame: 0,
+      timecode: "",
 
       name: "",
-      color: "Green",
-      frame: 0,
-      timeMode: "playhead",
+      markerName: "",
+
+      color: "Blue",
+      newColor: "Blue",
+
+      note: "",
+      newNote: "",
 
       newName: "",
-      moveToFrame: 0,
-      duplicateCount: 1,
     };
   },
 

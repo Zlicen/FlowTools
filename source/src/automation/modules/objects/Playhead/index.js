@@ -6,14 +6,19 @@ export default {
   description: "Move the timeline playhead.",
   categoryId: "objects",
   categoryName: "Objects",
+  direction: "forward",
+  frames: 1,
 
   createDefaultSettings() {
     return {
       action: "move",
 
-      moveMode: "timecode",
+      moveTo: "timecode",
       timecode: "",
       frame: 0,
+
+      trackType: "any",
+      trackIndex: 1,
     };
   },
 

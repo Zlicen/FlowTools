@@ -1,53 +1,36 @@
 const objectActionRules = {
   "object-track": [
-    "set",
-    "delete",
-    "rename",
-    "move",
-    "duplicate",
-  ],
+  "add",
+  "rename",
+  "delete",
+  "duplicate",
+],
 
   "object-marker": [
-    "set",
-    "delete",
-    "rename",
-    "move",
-    "duplicate",
-  ],
+  "add",
+  "duplicate",
+],
 
   "object-timeline": [
-    "set",
-    "rename",
-    "duplicate",
-    "delete",
-    "render",
-  ],
-
-  "object-timeline-media": [
-    "set",
-    "delete",
-    "rename",
-    "move",
-    "duplicate",
-  ],
-
-  "object-project-media": [
-    "set",
-    "delete",
-    "rename",
-    "move",
-    "duplicate",
-  ],
+  "duplicate",
+  "rename",
+  "delete",
+],
 
   "object-playhead": [
     "move",
   ],
 
-  "object-render": [
-    "set",
-    "delete",
-    "render",
-  ],
+  "object-video-clip": [
+  "transform",
+  "crop",
+  "speed",
+  "opacity",
+  "duplicate",
+  "delete",
+  "move",
+  "color",
+],
 };
 
 function getAllModuleCapabilities() {

@@ -6,16 +6,20 @@ import {
 } from "../../../components";
 
 const ACTION_OPTIONS = [
-  { value: "set", label: "Set" },
-  { value: "rename", label: "Rename" },
   { value: "duplicate", label: "Duplicate" },
+  { value: "rename", label: "Rename" },
   { value: "delete", label: "Delete" },
-  { value: "render", label: "Render" },
+];
+
+const FIND_BY_OPTIONS = [
+  { value: "current", label: "Current timeline" },
+  { value: "name", label: "Name" },
 ];
 
 function TimelineObjectUI({ module, onUpdate }) {
   const settings = module.settings || {};
-  const action = settings.action || "set";
+  const action = settings.action || "duplicate";
+  const findBy = settings.findBy || "current";
 
   function update(key, value) {
     onUpdate({
@@ -27,12 +31,6 @@ function TimelineObjectUI({ module, onUpdate }) {
     });
   }
 
-  const needsTimelineFinder =
-    action === "rename" ||
-    action === "duplicate" ||
-    action === "delete" ||
-    action === "render";
-
   return (
     <ModuleSettingsBox>
       <ModuleSettingsField label="Action">
@@ -43,24 +41,29 @@ function TimelineObjectUI({ module, onUpdate }) {
         />
       </ModuleSettingsField>
 
-      {needsTimelineFinder && (
-        <ModuleSettingsField label="Timeline">
-          <ModuleSelect
-            value={settings.findMode || "current"}
-            onChange={(value) => update("findMode", value)}
-            options={[
-              { value: "current", label: "Current timeline" },
-              { value: "name", label: "By name" },
-            ]}
+      <ModuleSettingsField label="Find by">
+        <ModuleSelect
+          value={findBy}
+          onChange={(value) => update("findBy", value)}
+          options={FIND_BY_OPTIONS}
+        />
+      </ModuleSettingsField>
+
+      {findBy === "name" && (
+        <ModuleSettingsField label="Timeline name">
+          <ModuleTextInput
+            value={settings.timelineName || ""}
+            placeholder="Existing timeline name..."
+            onChange={(value) => update("timelineName", value)}
           />
         </ModuleSettingsField>
       )}
 
-      {(action === "set" || settings.findMode === "name") && (
-        <ModuleSettingsField label="Timeline name">
+      {action === "duplicate" && (
+        <ModuleSettingsField label="Name">
           <ModuleTextInput
             value={settings.name || ""}
-            placeholder="Timeline name..."
+            placeholder="Duplicate timeline name..."
             onChange={(value) => update("name", value)}
           />
         </ModuleSettingsField>
@@ -72,16 +75,6 @@ function TimelineObjectUI({ module, onUpdate }) {
             value={settings.newName || ""}
             placeholder="New timeline name..."
             onChange={(value) => update("newName", value)}
-          />
-        </ModuleSettingsField>
-      )}
-
-      {action === "duplicate" && (
-        <ModuleSettingsField label="Duplicate name">
-          <ModuleTextInput
-            value={settings.duplicateName || ""}
-            placeholder="Optional duplicate name..."
-            onChange={(value) => update("duplicateName", value)}
           />
         </ModuleSettingsField>
       )}

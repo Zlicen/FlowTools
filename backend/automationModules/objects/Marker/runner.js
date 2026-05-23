@@ -1,203 +1,256 @@
 const { getPlayheadFrame } = require("../../../automationCore/playhead");
 
-async function getMarkerFrame(project, timeline, settings) {
-  if (settings.timeMode === "frame") {
+function getMarkerName(marker) {
+  return String(marker?.name || marker?.Name || "").trim();
+}
+
+function getMarkerColor(marker) {
+  return marker?.color || marker?.Color || "Blue";
+}
+
+function getMarkerNote(marker) {
+  return marker?.note || marker?.Note || "";
+}
+
+function getMarkerDuration(marker) {
+  return marker?.duration || marker?.Duration || 1;
+}
+
+function getMarkerCustomData(marker) {
+  return marker?.customData || marker?.CustomData || "";
+}
+
+async function getMarkers(timeline) {
+  if (!timeline || typeof timeline.GetMarkers !== "function") {
+    throw new Error("Resolve API does not support GetMarkers.");
+  }
+
+  const markers = await timeline.GetMarkers();
+
+  return markers || {};
+}
+
+async function findMarkerByName(timeline, markerName) {
+  const wantedName = String(markerName || "").trim();
+
+  if (!wantedName) {
+    throw new Error("Marker name is required.");
+  }
+
+  const markers = await getMarkers(timeline);
+
+  for (const [frameKey, marker] of Object.entries(markers)) {
+    const name = getMarkerName(marker);
+
+    if (name === wantedName) {
+      const frameNumber = Number(frameKey);
+
+      if (!Number.isFinite(frameNumber)) {
+        throw new Error(`Invalid marker frame: ${frameKey}`);
+      }
+
+      return {
+        frame: frameNumber,
+        marker,
+      };
+    }
+  }
+
+  throw new Error(`Marker "${wantedName}" was not found.`);
+}
+
+async function getTargetFrame(project, timeline, settings) {
+  const position = settings.position || "currentPlayhead";
+
+  if (position === "currentPlayhead") {
+    return await getPlayheadFrame(project, timeline);
+  }
+
+  if (position === "frame") {
     return Math.max(0, Number(settings.frame || 0));
+  }
+
+  if (position === "timecode") {
+    const timecode = String(settings.timecode || "").trim();
+
+    if (!timecode) {
+      throw new Error("Marker action needs a timecode.");
+    }
+
+    if (typeof timeline.SetCurrentTimecode !== "function") {
+      throw new Error("Resolve API does not support SetCurrentTimecode.");
+    }
+
+    const ok = await timeline.SetCurrentTimecode(timecode);
+
+    if (!ok) {
+      throw new Error(`Failed to move playhead to timecode ${timecode}.`);
+    }
+
+    return await getPlayheadFrame(project, timeline);
   }
 
   return await getPlayheadFrame(project, timeline);
 }
 
-async function setMarker(project, timeline, settings) {
-  if (!timeline) {
-    throw new Error("Marker Set needs an active timeline.");
-  }
-
-  if (typeof timeline.AddMarker !== "function") {
+async function addMarkerAtFrame(timeline, frame, markerData) {
+  if (!timeline || typeof timeline.AddMarker !== "function") {
     throw new Error("Resolve API does not support AddMarker.");
   }
 
-  const frame = await getMarkerFrame(project, timeline, settings);
-  const color = settings.color || "Green";
-  const name = settings.name || "Marker";
+  const frameNumber = Number(frame);
+
+  if (!Number.isFinite(frameNumber)) {
+    throw new Error(`Invalid marker frame: ${frame}`);
+  }
+
+  const color = markerData.color || "Blue";
+  const name = markerData.name || "";
+  const note = markerData.note || "";
+  const duration = Number(markerData.duration || 1);
+  const customData = markerData.customData || "";
 
   const ok = await timeline.AddMarker(
-    frame,
+    frameNumber,
     color,
     name,
-    "",
-    1
+    note,
+    duration,
+    customData
   );
 
   if (!ok) {
-    throw new Error(`Failed to set marker at frame ${frame}.`);
+    throw new Error(`Failed to add marker at frame ${frameNumber}.`);
   }
 }
 
-async function deleteMarker(project, timeline, settings) {
-  if (!timeline) {
-    throw new Error("Marker Delete needs an active timeline.");
-  }
-
-  if (typeof timeline.DeleteMarkerAtFrame !== "function") {
+async function deleteMarkerAtFrame(project, timeline, frame) {
+  if (!timeline || typeof timeline.DeleteMarkerAtFrame !== "function") {
     throw new Error("Resolve API does not support DeleteMarkerAtFrame.");
   }
 
-  const frame = await getMarkerFrame(project, timeline, settings);
+  const frameNumber = Number(frame);
 
-  const ok = await timeline.DeleteMarkerAtFrame(frame);
+  if (!Number.isFinite(frameNumber)) {
+    throw new Error(`Invalid marker frame: ${frame}`);
+  }
+
+  // Move playhead to marker frame first
+  if (typeof timeline.SetCurrentTimecode === "function") {
+    const { frameToTimecode } = require("../../../automationCore/timecode");
+    const timecode = await frameToTimecode(project, timeline, frameNumber);
+    await timeline.SetCurrentTimecode(timecode);
+  }
+
+  // Read playhead frame after moving there
+  const currentFrame = await getPlayheadFrame(project, timeline);
+
+  const ok = await timeline.DeleteMarkerAtFrame(currentFrame);
 
   if (!ok) {
-    throw new Error(`Failed to delete marker at frame ${frame}.`);
+    throw new Error(
+      `Failed to delete marker. Marker frame: ${frameNumber}, playhead frame: ${currentFrame}`
+    );
   }
+}
+
+function copyMarkerData(marker, overrides = {}) {
+  return {
+    color: overrides.color ?? getMarkerColor(marker),
+    name: overrides.name ?? getMarkerName(marker),
+    note: overrides.note ?? getMarkerNote(marker),
+    duration: overrides.duration ?? getMarkerDuration(marker),
+    customData: overrides.customData ?? getMarkerCustomData(marker),
+  };
+}
+
+async function addMarker(project, timeline, settings) {
+  const frame = await getTargetFrame(project, timeline, settings);
+
+  await addMarkerAtFrame(timeline, frame, {
+    color: settings.color || "Blue",
+    name: settings.name || "",
+    note: settings.note || "",
+    duration: 1,
+    customData: "",
+  });
+}
+
+async function moveMarker(project, timeline, settings) {
+  const found = await findMarkerByName(timeline, settings.markerName);
+  const targetFrame = await getTargetFrame(project, timeline, settings);
+
+  await deleteMarkerAtFrame(project, timeline, found.frame);
+  await addMarkerAtFrame(timeline, targetFrame, copyMarkerData(found.marker));
+}
+
+async function duplicateMarker(project, timeline, settings) {
+  const found = await findMarkerByName(timeline, settings.markerName);
+  const targetFrame = await getTargetFrame(project, timeline, settings);
+
+  await addMarkerAtFrame(timeline, targetFrame, copyMarkerData(found.marker));
 }
 
 async function renameMarker(project, timeline, settings) {
-  if (!timeline) {
-    throw new Error("Marker Rename needs an active timeline.");
-  }
-
-  if (typeof timeline.DeleteMarkerAtFrame !== "function") {
-    throw new Error("Resolve API does not support DeleteMarkerAtFrame.");
-  }
-
-  if (typeof timeline.AddMarker !== "function") {
-    throw new Error("Resolve API does not support AddMarker.");
-  }
-
-  const frame = await getMarkerFrame(project, timeline, settings);
-  const markers =
-    typeof timeline.GetMarkers === "function"
-      ? await timeline.GetMarkers()
-      : {};
-
-  const existingMarker = markers?.[frame];
-
-  if (!existingMarker) {
-    throw new Error(`No marker found at frame ${frame}.`);
-  }
-
   const newName = String(settings.newName || "").trim();
 
   if (!newName) {
     throw new Error("Marker Rename needs a new name.");
   }
 
-  await timeline.DeleteMarkerAtFrame(frame);
+  const found = await findMarkerByName(timeline, settings.markerName);
 
-  const ok = await timeline.AddMarker(
-    frame,
-    existingMarker.color || existingMarker.Color || settings.color || "Green",
-    newName,
-    existingMarker.note || existingMarker.Note || "",
-    existingMarker.duration || existingMarker.Duration || 1
+  await deleteMarkerAtFrame(project, timeline, found.frame);
+  await addMarkerAtFrame(
+    timeline,
+    found.frame,
+    copyMarkerData(found.marker, {
+      name: newName,
+    })
   );
-
-  if (!ok) {
-    throw new Error("Failed to rename marker.");
-  }
 }
 
-async function moveMarker(project, timeline, settings) {
-  if (!timeline) {
-    throw new Error("Marker Move needs an active timeline.");
-  }
+async function deleteMarker(project, timeline, settings) {
+  const found = await findMarkerByName(timeline, settings.markerName);
+  await deleteMarkerAtFrame(project, timeline, found.frame);
+}
 
-  if (typeof timeline.DeleteMarkerAtFrame !== "function") {
-    throw new Error("Resolve API does not support DeleteMarkerAtFrame.");
-  }
+async function colorMarker(project, timeline, settings) {
+  const found = await findMarkerByName(timeline, settings.markerName);
 
-  if (typeof timeline.AddMarker !== "function") {
-    throw new Error("Resolve API does not support AddMarker.");
-  }
-
-  const fromFrame = await getMarkerFrame(project, timeline, settings);
-  const toFrame = Math.max(0, Number(settings.moveToFrame || 0));
-
-  const markers =
-    typeof timeline.GetMarkers === "function"
-      ? await timeline.GetMarkers()
-      : {};
-
-  const existingMarker = markers?.[fromFrame];
-
-  if (!existingMarker) {
-    throw new Error(`No marker found at frame ${fromFrame}.`);
-  }
-
-  await timeline.DeleteMarkerAtFrame(fromFrame);
-
-  const ok = await timeline.AddMarker(
-    toFrame,
-    existingMarker.color || existingMarker.Color || settings.color || "Green",
-    existingMarker.name || existingMarker.Name || settings.name || "Marker",
-    existingMarker.note || existingMarker.Note || "",
-    existingMarker.duration || existingMarker.Duration || 1
+  await deleteMarkerAtFrame(project, timeline, found.frame);
+  await addMarkerAtFrame(
+    timeline,
+    found.frame,
+    copyMarkerData(found.marker, {
+      color: settings.newColor || "Blue",
+    })
   );
-
-  if (!ok) {
-    throw new Error("Failed to move marker.");
-  }
 }
 
-async function duplicateMarker(project, timeline, settings) {
+async function noteMarker(project, timeline, settings) {
+  const found = await findMarkerByName(timeline, settings.markerName);
+
+  await deleteMarkerAtFrame(project, timeline, found.frame);
+  await addMarkerAtFrame(
+    timeline,
+    found.frame,
+    copyMarkerData(found.marker, {
+      note: settings.newNote || "",
+    })
+  );
+}
+
+async function runMarkerTargetModule({ project, timeline, module }) {
   if (!timeline) {
-    throw new Error("Marker Duplicate needs an active timeline.");
+    throw new Error("Marker action needs an active timeline.");
   }
 
-  if (typeof timeline.AddMarker !== "function") {
-    throw new Error("Resolve API does not support AddMarker.");
-  }
-
-  const frame = await getMarkerFrame(project, timeline, settings);
-  const count = Math.max(1, Number(settings.duplicateCount || 1));
-
-  const markers =
-    typeof timeline.GetMarkers === "function"
-      ? await timeline.GetMarkers()
-      : {};
-
-  const existingMarker = markers?.[frame];
-
-  if (!existingMarker) {
-    throw new Error(`No marker found at frame ${frame}.`);
-  }
-
-  for (let index = 1; index <= count; index += 1) {
-    const ok = await timeline.AddMarker(
-      frame + index,
-      existingMarker.color || existingMarker.Color || settings.color || "Green",
-      existingMarker.name || existingMarker.Name || settings.name || "Marker",
-      existingMarker.note || existingMarker.Note || "",
-      existingMarker.duration || existingMarker.Duration || 1
-    );
-
-    if (!ok) {
-      throw new Error("Failed to duplicate marker.");
-    }
-  }
-}
-
-async function runMarkerTargetModule({
-  project,
-  timeline,
-  module,
-}) {
   const settings = module.settings || {};
-  const action = settings.action || "set";
+  const action = settings.action || "add";
 
-  if (action === "set") {
-    await setMarker(project, timeline, settings);
-    return;
-  }
-
-  if (action === "delete") {
-    await deleteMarker(project, timeline, settings);
-    return;
-  }
-
-  if (action === "rename") {
-    await renameMarker(project, timeline, settings);
+  if (action === "add") {
+    await addMarker(project, timeline, settings);
     return;
   }
 
@@ -208,6 +261,26 @@ async function runMarkerTargetModule({
 
   if (action === "duplicate") {
     await duplicateMarker(project, timeline, settings);
+    return;
+  }
+
+  if (action === "rename") {
+    await renameMarker(project, timeline, settings);
+    return;
+  }
+
+  if (action === "delete") {
+    await deleteMarker(project, timeline, settings);
+    return;
+  }
+
+  if (action === "color") {
+    await colorMarker(project, timeline, settings);
+    return;
+  }
+
+  if (action === "note") {
+    await noteMarker(project, timeline, settings);
     return;
   }
 

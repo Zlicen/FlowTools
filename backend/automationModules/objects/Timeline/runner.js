@@ -1,52 +1,83 @@
 async function getTimelineName(timeline) {
-  if (!timeline) return "";
-
-  if (typeof timeline.GetName === "function") {
-    try {
-      return String((await timeline.GetName()) || "");
-    } catch {}
+  if (!timeline || typeof timeline.GetName !== "function") {
+    return "";
   }
 
-  return "";
+  return String((await timeline.GetName()) || "");
 }
 
-async function setTimeline(timeline, settings) {
-  if (!timeline) {
-    throw new Error("Timeline Set needs an active timeline.");
+async function getTimelineByName(project, timelineName) {
+  if (!project) {
+    throw new Error("Timeline action needs an active project.");
   }
 
+  const wantedName = String(timelineName || "").trim();
+
+  if (!wantedName) {
+    throw new Error("Timeline name is required.");
+  }
+
+  if (typeof project.GetTimelineCount !== "function") {
+    throw new Error("Resolve API does not support GetTimelineCount.");
+  }
+
+  if (typeof project.GetTimelineByIndex !== "function") {
+    throw new Error("Resolve API does not support GetTimelineByIndex.");
+  }
+
+  const timelineCount = await project.GetTimelineCount();
+
+  for (let index = 1; index <= timelineCount; index += 1) {
+    const timeline = await project.GetTimelineByIndex(index);
+    const name = await getTimelineName(timeline);
+
+    if (name === wantedName) {
+      return timeline;
+    }
+  }
+
+  throw new Error(`Timeline "${wantedName}" was not found.`);
+}
+
+async function findTimeline(project, currentTimeline, settings) {
+  const findBy = settings.findBy || "current";
+
+  if (findBy === "name") {
+    return await getTimelineByName(project, settings.timelineName);
+  }
+
+  if (!currentTimeline) {
+    throw new Error("No current timeline found.");
+  }
+
+  return currentTimeline;
+}
+
+async function duplicateTimeline(project, currentTimeline, settings) {
+  const timeline = await findTimeline(project, currentTimeline, settings);
   const name = String(settings.name || "").trim();
 
   if (!name) {
-    return;
+    throw new Error("Duplicate Timeline needs a name.");
   }
 
-  if (typeof timeline.SetName !== "function") {
-    throw new Error("Resolve API does not support timeline SetName.");
+  if (typeof timeline.DuplicateTimeline !== "function") {
+    throw new Error("Resolve API does not support DuplicateTimeline.");
   }
 
-  const currentName = await getTimelineName(timeline);
+  const duplicatedTimeline = await timeline.DuplicateTimeline(name);
 
-  if (currentName === name) {
-    return;
-  }
-
-  const ok = await timeline.SetName(name);
-
-  if (!ok) {
-    throw new Error("Failed to set timeline name.");
+  if (!duplicatedTimeline) {
+    throw new Error("Failed to duplicate timeline.");
   }
 }
 
-async function renameTimeline(timeline, settings) {
-  if (!timeline) {
-    throw new Error("Timeline Rename needs an active timeline.");
-  }
-
+async function renameTimeline(project, currentTimeline, settings) {
+  const timeline = await findTimeline(project, currentTimeline, settings);
   const newName = String(settings.newName || "").trim();
 
   if (!newName) {
-    throw new Error("Timeline Rename needs a new name.");
+    throw new Error("Rename Timeline needs a new name.");
   }
 
   if (typeof timeline.SetName !== "function") {
@@ -60,23 +91,24 @@ async function renameTimeline(timeline, settings) {
   }
 }
 
-async function duplicateTimeline() {
-  throw new Error("Timeline Duplicate is not implemented yet.");
-}
+async function deleteTimeline(project, currentTimeline, settings) {
+  const timeline = await findTimeline(project, currentTimeline, settings);
+  const timelineName = await getTimelineName(timeline);
 
-async function deleteTimeline() {
-  throw new Error("Timeline Delete is not implemented yet.");
-}
-
-async function renderTimeline(project) {
-  if (!project || typeof project.AddRenderJob !== "function") {
-    throw new Error("Resolve API does not support AddRenderJob.");
+  if (!project || typeof project.GetMediaPool !== "function") {
+    throw new Error("Resolve API does not support GetMediaPool.");
   }
 
-  const jobId = await project.AddRenderJob();
+  const mediaPool = await project.GetMediaPool();
 
-  if (!jobId) {
-    throw new Error("Failed to add render job for timeline.");
+  if (!mediaPool || typeof mediaPool.DeleteTimelines !== "function") {
+    throw new Error("Resolve API does not support DeleteTimelines.");
+  }
+
+  const ok = await mediaPool.DeleteTimelines([timeline]);
+
+  if (!ok) {
+    throw new Error(`Failed to delete timeline "${timelineName}".`);
   }
 }
 
@@ -86,30 +118,20 @@ async function runTimelineTargetModule({
   module,
 }) {
   const settings = module.settings || {};
-  const action = settings.action || "set";
-
-  if (action === "set") {
-    await setTimeline(timeline, settings);
-    return;
-  }
-
-  if (action === "rename") {
-    await renameTimeline(timeline, settings);
-    return;
-  }
+  const action = settings.action || "duplicate";
 
   if (action === "duplicate") {
     await duplicateTimeline(project, timeline, settings);
     return;
   }
 
-  if (action === "delete") {
-    await deleteTimeline(project, timeline, settings);
+  if (action === "rename") {
+    await renameTimeline(project, timeline, settings);
     return;
   }
 
-  if (action === "render") {
-    await renderTimeline(project, timeline, settings);
+  if (action === "delete") {
+    await deleteTimeline(project, timeline, settings);
     return;
   }
 

@@ -7,32 +7,26 @@ import {
 } from "../../../components";
 
 const ACTION_OPTIONS = [
-  { value: "set", label: "Set" },
-  { value: "delete", label: "Delete" },
+  { value: "add", label: "Add" },
   { value: "rename", label: "Rename" },
-  { value: "move", label: "Move" },
+  { value: "delete", label: "Delete" },
   { value: "duplicate", label: "Duplicate" },
 ];
 
 const TRACK_TYPE_OPTIONS = [
   { value: "video", label: "Video" },
   { value: "audio", label: "Audio" },
-  { value: "subtitle", label: "Subtitle" },
 ];
 
-const COLOR_OPTIONS = [
-  { value: "default", label: "Default" },
-  { value: "red", label: "Red" },
-  { value: "green", label: "Green" },
-  { value: "blue", label: "Blue" },
-  { value: "yellow", label: "Yellow" },
-  { value: "orange", label: "Orange" },
-  { value: "purple", label: "Purple" },
+const FIND_BY_OPTIONS = [
+  { value: "index", label: "Index" },
+  { value: "name", label: "Name" },
 ];
 
 function TrackObjectUI({ module, onUpdate }) {
   const settings = module.settings || {};
-  const action = settings.action || "set";
+  const action = settings.action || "add";
+  const findBy = settings.findBy || "index";
 
   function update(key, value) {
     onUpdate({
@@ -44,10 +38,9 @@ function TrackObjectUI({ module, onUpdate }) {
     });
   }
 
-  const needsExistingTrack =
-    action === "delete" ||
+  const needsFindBy =
     action === "rename" ||
-    action === "move" ||
+    action === "delete" ||
     action === "duplicate";
 
   return (
@@ -68,70 +61,79 @@ function TrackObjectUI({ module, onUpdate }) {
         />
       </ModuleSettingsField>
 
-      {needsExistingTrack && (
-        <ModuleSettingsField label="Track index">
-          <ModuleNumberInput
-            min={1}
-            value={settings.trackIndex || 1}
-            onChange={(value) =>
-              update("trackIndex", Math.max(1, Number(value) || 1))
-            }
-          />
-        </ModuleSettingsField>
-      )}
-
-      {(action === "set" || action === "rename") && (
-        <ModuleSettingsField label={action === "rename" ? "New name" : "Name"}>
-          <ModuleTextInput
-            value={settings.name || ""}
-            placeholder="Track name..."
-            onChange={(value) => update("name", value)}
-          />
-        </ModuleSettingsField>
-      )}
-
-      {action === "set" && (
-        <ModuleSettingsField label="Color">
-          <ModuleSelect
-            value={settings.color || "default"}
-            onChange={(value) => update("color", value)}
-            options={COLOR_OPTIONS}
-          />
-        </ModuleSettingsField>
-      )}
-
-      {action === "move" && (
+      {action === "add" && (
         <>
-          <ModuleSettingsField label="Direction">
-            <ModuleSelect
-              value={settings.moveDirection || "up"}
-              onChange={(value) => update("moveDirection", value)}
-              options={[
-                { value: "up", label: "Up" },
-                { value: "down", label: "Down" },
-              ]}
+          <ModuleSettingsField label="Track index">
+            <ModuleNumberInput
+              min={1}
+              value={settings.trackIndex || 1}
+              onChange={(value) =>
+                update("trackIndex", Math.max(1, Number(value) || 1))
+              }
             />
           </ModuleSettingsField>
 
-          <ModuleSettingsField label="Amount">
-            <ModuleNumberInput
-              min={1}
-              value={settings.moveAmount || 1}
-              onChange={(value) =>
-                update("moveAmount", Math.max(1, Number(value) || 1))
-              }
+          <ModuleSettingsField label="Name">
+            <ModuleTextInput
+              value={settings.name || ""}
+              placeholder="Track name..."
+              onChange={(value) => update("name", value)}
             />
           </ModuleSettingsField>
         </>
       )}
 
+      {needsFindBy && (
+        <>
+          <ModuleSettingsField label="Find by">
+            <ModuleSelect
+              value={findBy}
+              onChange={(value) => update("findBy", value)}
+              options={FIND_BY_OPTIONS}
+            />
+          </ModuleSettingsField>
+
+          {findBy === "index" && (
+            <ModuleSettingsField label="Track index">
+              <ModuleNumberInput
+                min={1}
+                value={settings.trackIndex || 1}
+                onChange={(value) =>
+                  update("trackIndex", Math.max(1, Number(value) || 1))
+                }
+              />
+            </ModuleSettingsField>
+          )}
+
+          {findBy === "name" && (
+            <ModuleSettingsField label="Track name">
+              <ModuleTextInput
+                value={settings.trackName || ""}
+                placeholder="Existing track name..."
+                onChange={(value) => update("trackName", value)}
+              />
+            </ModuleSettingsField>
+          )}
+        </>
+      )}
+
+      {action === "rename" && (
+        <ModuleSettingsField label="New name">
+          <ModuleTextInput
+            value={settings.newName || ""}
+            placeholder="New track name..."
+            onChange={(value) => update("newName", value)}
+          />
+        </ModuleSettingsField>
+      )}
+
       {action === "duplicate" && (
-        <ModuleSettingsField label="Copies">
+        <ModuleSettingsField label="Duplicate to index">
           <ModuleNumberInput
             min={1}
-            value={settings.duplicateCount || 1}
+            value={settings.duplicateToIndex || 1}
             onChange={(value) =>
-              update("duplicateCount", Math.max(1, Number(value) || 1))
+              update("duplicateToIndex", Math.max(1, Number(value) || 1))
             }
           />
         </ModuleSettingsField>
