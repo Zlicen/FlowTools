@@ -33,11 +33,15 @@ const objectActionRules = {
   ],
 
   "object-audio-clip": [
-    "volume",
-    "pitch",
     "duplicate",
     "delete",
     "color",
+  ],
+
+  "object-compound-clip": [
+    "create",
+    "rename",
+    "delete",
   ],
 };
 
