@@ -8,18 +8,25 @@ import ToolsTab from "./tabs/ToolsTab";
 import AutomationTab from "./tabs/AutomationTab";
 import SettingsModal from "./components/SettingsModal";
 import MediaTab from "./tabs/MediaTab";
-import { debugMediaPool } from "./api/resolveAPI";
+import { debugVideoClipUnderPlayhead } from "./api/resolveAPI";
 import { uiStore, useUIStore } from "./store";
 
-async function handleDebugMediaPool() {
+async function handleDebugVideoClip() {
   try {
-    const result = await debugMediaPool();
+    const result = await debugVideoClipUnderPlayhead(1);
+    const debugText = JSON.stringify(result, null, 2);
 
-    console.log("Resolve media pool debug:", result);
+    console.log("Video clip debug:", result);
 
-    alert("Debug complete. Open DevTools console to see the full result.");
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(debugText);
+      alert(`Debug copied to clipboard:\n\n${debugText}`);
+      return;
+    }
+
+    alert(debugText);
   } catch (error) {
-    console.error("Resolve media pool debug failed:", error);
+    console.error("Video clip debug failed:", error);
     alert(`Debug failed: ${String(error)}`);
   }
 }
@@ -110,7 +117,7 @@ function App() {
         startTabDrag={uiStore.startTabDrag}
         clearTabDrag={uiStore.clearTabDrag}
         onSettingsClick={uiStore.openSettings}
-        onDebugClick={handleDebugMediaPool}
+        onDebugClick={handleDebugVideoClip}
       />
 
       <main

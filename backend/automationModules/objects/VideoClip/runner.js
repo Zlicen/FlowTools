@@ -9,10 +9,6 @@ async function getVideoClipUnderPlayhead(project, timeline, settings) {
   const trackIndex = Math.max(1, cleanNumber(settings.trackIndex, 1));
   const playheadFrame = await getPlayheadFrame(project, timeline);
 
-  if (!timeline || typeof timeline.GetItemListInTrack !== "function") {
-    throw new Error("Resolve API does not support GetItemListInTrack.");
-  }
-
   const clips = (await timeline.GetItemListInTrack("video", trackIndex)) || [];
 
   for (const clip of clips) {
@@ -24,49 +20,126 @@ async function getVideoClipUnderPlayhead(project, timeline, settings) {
     }
   }
 
-  throw new Error(
-    `No video clip found under playhead on video track ${trackIndex}.`
+  throw new Error(`No video clip found under playhead on video track ${trackIndex}.`);
+}
+
+async function setProperty(clip, names, value, fallback) {
+  const cleanValue = cleanNumber(value, fallback);
+
+  for (const name of names) {
+    try {
+      const ok = await clip.SetProperty(name, cleanValue);
+      if (ok) return;
+    } catch (_) {}
+  }
+
+  throw new Error(`Failed setting property. Tried: ${names.join(", ")} = ${cleanValue}`);
+}
+
+async function getOriginalTimecode(timeline) {
+  if (timeline && typeof timeline.GetCurrentTimecode === "function") {
+    return timeline.GetCurrentTimecode();
+  }
+
+  return null;
+}
+
+async function restoreTimecode(timeline, timecode) {
+  if (timecode && timeline && typeof timeline.SetCurrentTimecode === "function") {
+    await timeline.SetCurrentTimecode(timecode);
+  }
+}
+
+async function appendToTimeline(project, clipInfo) {
+  const mediaPool = await project.GetMediaPool();
+
+  if (!mediaPool || typeof mediaPool.AppendToTimeline !== "function") {
+    throw new Error("Resolve API does not support MediaPool.AppendToTimeline().");
+  }
+
+  const result = await mediaPool.AppendToTimeline([clipInfo]);
+
+  if (!result) {
+    throw new Error("Failed to append clip to timeline.");
+  }
+
+  return result;
+}
+
+async function buildDuplicateClipInfo(clip, trackIndex, recordFrame) {
+  const mediaPoolItem = await clip.GetMediaPoolItem();
+
+  if (!mediaPoolItem) {
+    throw new Error("Could not find Media Pool item for video clip.");
+  }
+
+  const sourceStart = Number(await clip.GetSourceStartFrame());
+  const sourceEnd = Number(await clip.GetSourceEndFrame());
+
+  if (!Number.isFinite(sourceStart) || !Number.isFinite(sourceEnd)) {
+    throw new Error(`Invalid source frames: start=${sourceStart}, end=${sourceEnd}`);
+  }
+
+  return {
+    mediaPoolItem,
+    startFrame: sourceStart,
+    endFrame: sourceEnd,
+    mediaType: 1,
+    trackIndex,
+    recordFrame,
+  };
+}
+
+async function positionClip(clip, settings) {
+  await setProperty(clip, ["Pan", "PositionX"], settings.positionX, 0);
+  await setProperty(clip, ["Tilt", "PositionY"], settings.positionY, 0);
+}
+
+async function zoomClip(clip, settings) {
+  const zoom = cleanNumber(settings.zoom, 1);
+
+  await setProperty(clip, ["ZoomX"], zoom, 1);
+  await setProperty(clip, ["ZoomY"], zoom, 1);
+}
+
+async function rotationClip(clip, settings) {
+  await setProperty(
+    clip,
+    ["RotationAngle", "Rotation"],
+    settings.rotationAngle,
+    0
   );
 }
 
-async function setClipProperty(clip, propertyName, value, fallback) {
-  if (!clip || typeof clip.SetProperty !== "function") {
-    throw new Error("Resolve API does not support SetProperty on video clips.");
-  }
+async function duplicateClip(project, timeline, clip, settings) {
+  const originalTimecode = await getOriginalTimecode(timeline);
+  const timelineStart = Number(await clip.GetStart());
 
-  const cleanValue = cleanNumber(value, fallback);
+  const duplicateToTrackIndex = Math.max(
+    1,
+    cleanNumber(settings.duplicateToTrackIndex, cleanNumber(settings.trackIndex, 1) + 1)
+  );
 
-  const ok = await clip.SetProperty(propertyName, cleanValue);
+  const clipInfo = await buildDuplicateClipInfo(
+    clip,
+    duplicateToTrackIndex,
+    timelineStart
+  );
 
-  if (!ok) {
-    throw new Error(`Failed setting ${propertyName} to ${cleanValue}.`);
-  }
-}
-
-async function transformClip(clip, settings) {
-  await setClipProperty(clip, "ZoomX", settings.zoomX, 1);
-  await setClipProperty(clip, "ZoomY", settings.zoomY, 1);
-
-  await setClipProperty(clip, "PositionX", settings.positionX, 0);
-  await setClipProperty(clip, "PositionY", settings.positionY, 0);
-
-  await setClipProperty(clip, "RotationAngle", settings.rotationAngle, 0);
+  await appendToTimeline(project, clipInfo);
+  await restoreTimecode(timeline, originalTimecode);
 }
 
 async function cropClip(clip, settings) {
-  await setClipProperty(clip, "CropLeft", settings.cropLeft, 0);
-  await setClipProperty(clip, "CropRight", settings.cropRight, 0);
-  await setClipProperty(clip, "CropTop", settings.cropTop, 0);
-  await setClipProperty(clip, "CropBottom", settings.cropBottom, 0);
-  await setClipProperty(clip, "CropSoftness", settings.cropSoftness, 0);
+  await setProperty(clip, ["CropLeft"], settings.cropLeft, 0);
+  await setProperty(clip, ["CropRight"], settings.cropRight, 0);
+  await setProperty(clip, ["CropTop"], settings.cropTop, 0);
+  await setProperty(clip, ["CropBottom"], settings.cropBottom, 0);
+  await setProperty(clip, ["CropSoftness"], settings.cropSoftness, 0);
 }
 
 async function opacityClip(clip, settings) {
-  await setClipProperty(clip, "Opacity", settings.opacity, 100);
-}
-
-async function speedClip(clip, settings) {
-  await setClipProperty(clip, "Speed", settings.speed, 100);
+  await setProperty(clip, ["Opacity"], settings.opacity, 100);
 }
 
 async function colorClip(clip, settings) {
@@ -81,45 +154,12 @@ async function colorClip(clip, settings) {
   }
 }
 
-async function duplicateClip(timeline, clip) {
-  if (!timeline || typeof timeline.DuplicateClips !== "function") {
-    throw new Error("Resolve API does not support DuplicateClips.");
-  }
-
-  const ok = await timeline.DuplicateClips([clip]);
-
-  if (!ok) {
-    throw new Error("Failed to duplicate video clip.");
-  }
-}
-
 async function deleteClip(timeline, clip) {
   if (!timeline || typeof timeline.DeleteClips !== "function") {
     throw new Error("Resolve API does not support DeleteClips.");
   }
 
-  const ok = await timeline.DeleteClips([clip]);
-
-  if (!ok) {
-    throw new Error("Failed to delete video clip.");
-  }
-}
-
-async function moveClip(timeline, clip, settings) {
-  if (!timeline || typeof timeline.MoveClips !== "function") {
-    throw new Error("Resolve API does not support MoveClips.");
-  }
-
-  const start = Number(await clip.GetStart());
-  const targetTrackIndex = Math.max(1, cleanNumber(settings.targetTrackIndex, 1));
-  const offsetFrames = cleanNumber(settings.offsetFrames, 0);
-  const targetFrame = start + offsetFrames;
-
-  const ok = await timeline.MoveClips([clip], targetFrame, targetTrackIndex);
-
-  if (!ok) {
-    throw new Error("Failed to move video clip.");
-  }
+  await timeline.DeleteClips([clip]);
 }
 
 async function runVideoClipTargetModule({ project, timeline, module }) {
@@ -128,49 +168,18 @@ async function runVideoClipTargetModule({ project, timeline, module }) {
   }
 
   const settings = module.settings || {};
-  const action = settings.action || "transform";
+  const action = settings.action || "zoom";
 
   const clip = await getVideoClipUnderPlayhead(project, timeline, settings);
 
-  if (action === "transform") {
-    await transformClip(clip, settings);
-    return;
-  }
-
-  if (action === "crop") {
-    await cropClip(clip, settings);
-    return;
-  }
-
-  if (action === "opacity") {
-    await opacityClip(clip, settings);
-    return;
-  }
-
-  if (action === "speed") {
-    await speedClip(clip, settings);
-    return;
-  }
-
-  if (action === "duplicate") {
-    await duplicateClip(timeline, clip);
-    return;
-  }
-
-  if (action === "delete") {
-    await deleteClip(timeline, clip);
-    return;
-  }
-
-  if (action === "move") {
-    await moveClip(timeline, clip, settings);
-    return;
-  }
-
-  if (action === "color") {
-    await colorClip(clip, settings);
-    return;
-  }
+  if (action === "position") return positionClip(clip, settings);
+  if (action === "zoom") return zoomClip(clip, settings);
+  if (action === "rotation") return rotationClip(clip, settings);
+  if (action === "duplicate") return duplicateClip(project, timeline, clip, settings);
+  if (action === "crop") return cropClip(clip, settings);
+  if (action === "opacity") return opacityClip(clip, settings);
+  if (action === "delete") return deleteClip(timeline, clip);
+  if (action === "color") return colorClip(clip, settings);
 
   throw new Error(`Video Clip action "${action}" is not implemented.`);
 }
