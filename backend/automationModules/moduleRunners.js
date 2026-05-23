@@ -10,6 +10,7 @@ const { runMoveActionModule } = require("./actions/Move/runner");
 const { runDuplicateActionModule } = require("./actions/Duplicate/runner");
 const { runRenameActionModule } = require("./actions/Rename/runner");
 const { runVideoClipTargetModule } = require("./objects/VideoClip/runner");
+const { runAudioClipTargetModule } = require("./objects/AudioClip/runner");
 
 const moduleRunners = {
   "object-timeline": runTimelineTargetModule,
@@ -23,6 +24,7 @@ const moduleRunners = {
   "action-duplicate": runDuplicateActionModule,
   "action-rename": runRenameActionModule,
   "object-video-clip": runVideoClipTargetModule,
+  "object-audio-clip": runAudioClipTargetModule,
 };
 
 function getModuleRunner(moduleType) {

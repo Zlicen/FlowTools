@@ -3,6 +3,7 @@ import TrackObject from "./Track";
 import PlayheadObject from "./Playhead";
 import MarkerObject from "./Marker";
 import VideoClipObject from "./VideoClip";
+import AudioClip from "./AudioClip";
 
 export const objectModules = [
   TimelineObject,
@@ -10,4 +11,5 @@ export const objectModules = [
   PlayheadObject,
   MarkerObject,
   VideoClipObject,
+  AudioClip,
 ];
