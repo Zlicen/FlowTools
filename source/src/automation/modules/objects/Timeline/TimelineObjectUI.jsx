@@ -12,8 +12,8 @@ const ACTION_OPTIONS = [
 ];
 
 const FIND_BY_OPTIONS = [
-  { value: "current", label: "Current timeline" },
-  { value: "name", label: "Name" },
+  { value: "current", label: "Current Timeline" },
+  { value: "name", label: "Timeline Name" },
 ];
 
 function TimelineObjectUI({ module, onUpdate }) {
@@ -33,6 +33,7 @@ function TimelineObjectUI({ module, onUpdate }) {
 
   return (
     <ModuleSettingsBox>
+
       <ModuleSettingsField label="Action">
         <ModuleSelect
           value={action}
@@ -41,7 +42,7 @@ function TimelineObjectUI({ module, onUpdate }) {
         />
       </ModuleSettingsField>
 
-      <ModuleSettingsField label="Find by">
+      <ModuleSettingsField label="Find Timeline By">
         <ModuleSelect
           value={findBy}
           onChange={(value) => update("findBy", value)}
@@ -50,7 +51,7 @@ function TimelineObjectUI({ module, onUpdate }) {
       </ModuleSettingsField>
 
       {findBy === "name" && (
-        <ModuleSettingsField label="Timeline name">
+        <ModuleSettingsField label="Source Timeline">
           <ModuleTextInput
             value={settings.timelineName || ""}
             placeholder="Existing timeline name..."
@@ -60,17 +61,17 @@ function TimelineObjectUI({ module, onUpdate }) {
       )}
 
       {action === "duplicate" && (
-        <ModuleSettingsField label="Name">
+        <ModuleSettingsField label="Duplicate As">
           <ModuleTextInput
             value={settings.name || ""}
-            placeholder="Duplicate timeline name..."
+            placeholder="New timeline name..."
             onChange={(value) => update("name", value)}
           />
         </ModuleSettingsField>
       )}
 
       {action === "rename" && (
-        <ModuleSettingsField label="New name">
+        <ModuleSettingsField label="New Timeline Name">
           <ModuleTextInput
             value={settings.newName || ""}
             placeholder="New timeline name..."
@@ -78,6 +79,7 @@ function TimelineObjectUI({ module, onUpdate }) {
           />
         </ModuleSettingsField>
       )}
+
     </ModuleSettingsBox>
   );
 }

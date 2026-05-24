@@ -2,9 +2,12 @@ import VideoClipObjectUI from "./VideoClipObjectUI";
 
 export default {
   id: "object-video-clip",
+
   name: "Video Clip",
+
   description:
-    "Position, zoom, rotation, crop, opacity, duplicate, delete or color video clips.",
+    "Manage and automate video clips on the current timeline",
+
   categoryId: "objects",
   categoryName: "Objects",
 
@@ -13,6 +16,8 @@ export default {
       action: "position",
 
       trackIndex: 1,
+
+      name: "Video Clip",
 
       zoom: 1,
 
@@ -32,7 +37,76 @@ export default {
       opacity: 100,
 
       color: "Blue",
+
+      nodeIndex: 1,
+      lutPath: "",
     };
+  },
+
+  validateSettings(settings) {
+    const warnings = [];
+
+    const action = settings.action;
+
+    if (
+      settings.trackIndex === undefined ||
+      settings.trackIndex < 1
+    ) {
+      warnings.push("Missing source track");
+    }
+
+    if (
+      action === "rename" &&
+      !String(settings.name || "").trim()
+    ) {
+      warnings.push("Missing new clip name");
+    }
+
+    if (
+      action === "duplicate" &&
+      (
+        settings.duplicateToTrackIndex === undefined ||
+        settings.duplicateToTrackIndex < 1
+      )
+    ) {
+      warnings.push("Missing destination track");
+    }
+
+    if (
+      action === "lut" &&
+      !String(settings.lutPath || "").trim()
+    ) {
+      warnings.push("Missing LUT file");
+    }
+
+    if (
+      action === "lut" &&
+      (
+        settings.nodeIndex === undefined ||
+        settings.nodeIndex < 1
+      )
+    ) {
+      warnings.push("Missing color node");
+    }
+
+    if (
+      action === "zoom" &&
+      settings.zoom <= 0
+    ) {
+      warnings.push("Zoom must be above 0");
+    }
+
+    if (
+      action === "opacity" &&
+      (
+        settings.opacity < 0 ||
+        settings.opacity > 100
+      )
+    ) {
+      warnings.push("Opacity must be 0–100");
+    }
+
+    return warnings;
   },
 
   SettingsComponent: VideoClipObjectUI,

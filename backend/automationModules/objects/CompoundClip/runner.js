@@ -25,7 +25,7 @@ async function getClipsUnderPlayheadInTrack(timeline, trackType, trackIndex, pla
     const start = Number(await clip.GetStart());
     const end = Number(await clip.GetEnd());
 
-    if (playheadFrame >= start && playheadFrame < end) {
+    if (playheadFrame > start && playheadFrame < end) {
       found.push(clip);
     }
   }
@@ -96,60 +96,13 @@ async function createCompoundClip(project, timeline, settings) {
   return result;
 }
 
-async function renameCompoundClip(project, timeline, settings) {
-  const clips = await getTargetClipsUnderPlayhead(project, timeline, settings);
-  const name = cleanText(settings.name, "Compound Clip");
-
-  let renamedCount = 0;
-
-  for (const clip of clips) {
-    if (typeof clip.SetName === "function") {
-      const ok = await clip.SetName(name);
-
-      if (ok) {
-        renamedCount += 1;
-      }
-    }
-  }
-
-  if (renamedCount === 0) {
-    throw new Error("No compound clip could be renamed.");
-  }
-
-  return {
-    success: true,
-    renamedCount,
-  };
-}
-
-async function deleteCompoundClip(project, timeline, settings) {
-  const clips = await getTargetClipsUnderPlayhead(project, timeline, settings);
-
-  if (!timeline || typeof timeline.DeleteClips !== "function") {
-    throw new Error("Resolve API does not support Timeline.DeleteClips().");
-  }
-
-  await timeline.DeleteClips(clips);
-
-  return {
-    success: true,
-    deletedCount: clips.length,
-  };
-}
-
 async function runCompoundClipTargetModule({ project, timeline, module }) {
   if (!timeline) {
     throw new Error("Compound Clip action needs an active timeline.");
   }
 
   const settings = module.settings || {};
-  const action = settings.action || "create";
-
-  if (action === "create") return createCompoundClip(project, timeline, settings);
-  if (action === "rename") return renameCompoundClip(project, timeline, settings);
-  if (action === "delete") return deleteCompoundClip(project, timeline, settings);
-
-  throw new Error(`Compound Clip action "${action}" is not implemented.`);
+  return createCompoundClip(project, timeline, settings);
 }
 
 module.exports = {

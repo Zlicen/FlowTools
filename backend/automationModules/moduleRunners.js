@@ -6,12 +6,6 @@ const { runVideoClipTargetModule } = require("./objects/VideoClip/runner");
 const { runAudioClipTargetModule } = require("./objects/AudioClip/runner");
 const { runCompoundClipTargetModule } = require("./objects/CompoundClip/runner");
 
-const { runSetActionModule } = require("./actions/Set/runner");
-const { runDeleteActionModule } = require("./actions/Delete/runner");
-const { runMoveActionModule } = require("./actions/Move/runner");
-const { runDuplicateActionModule } = require("./actions/Duplicate/runner");
-const { runRenameActionModule } = require("./actions/Rename/runner");
-
 const moduleRunners = {
   "object-timeline": runTimelineTargetModule,
   "object-track": runTrackTargetModule,
@@ -20,12 +14,6 @@ const moduleRunners = {
   "object-video-clip": runVideoClipTargetModule,
   "object-audio-clip": runAudioClipTargetModule,
   "object-compound-clip": runCompoundClipTargetModule,
-
-  "action-set": runSetActionModule,
-  "action-delete": runDeleteActionModule,
-  "action-move": runMoveActionModule,
-  "action-duplicate": runDuplicateActionModule,
-  "action-rename": runRenameActionModule,
 };
 
 function getModuleRunner(moduleType) {

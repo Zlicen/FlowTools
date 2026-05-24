@@ -1235,6 +1235,7 @@ function AutomationModulePill({
   const categoryColor = getCategoryColor(definition?.categoryId);
   const textColor = getReadableTextColor(categoryColor);
   const warnings = moduleWarningsById[module.id] || [];
+  const hasWarnings = warnings.length > 0;
   const isDraggingThisModule =
     dragData?.source === "placed-module" && dragData.moduleId === module.id;
 
@@ -1780,8 +1781,8 @@ const styles = {
     borderRadius: "999px",
     display: "inline-grid",
     placeItems: "center",
-    backgroundColor: "#ffcc00",
-    color: "#111",
+    backgroundColor: "#ff3b3b",
+    color: "white",
     fontSize: "12px",
     fontWeight: "900",
     flexShrink: 0,
@@ -1808,7 +1809,7 @@ const styles = {
   },
 
   smartWarningTooltip: {
-    borderColor: "#ffcc00",
+    borderColor: "#ff3b3b",
   },
 
   settingsPanel: {

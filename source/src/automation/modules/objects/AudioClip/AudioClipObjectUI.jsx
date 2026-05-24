@@ -5,16 +5,19 @@ import {
   ModuleSelect,
   ModuleSettingsBox,
   ModuleSettingsField,
+  ModuleTextInput,
 } from "../../../components";
 
 const ACTION_OPTIONS = [
   { value: "duplicate", label: "Duplicate" },
+  { value: "rename", label: "Rename" },
   { value: "delete", label: "Delete" },
   { value: "color", label: "Color" },
+  { value: "split", label: "Split" },
 ];
 
 const COLOR_OPTIONS = [
-  { value: "Clear Color", label: "Clear Color", color: "transparent" },
+  { value: "Clear Color", label: "Clear Color", color: "transparent", isClear: true },
   { value: "Orange", label: "Orange", color: "#ff8a00" },
   { value: "Apricot", label: "Apricot", color: "#ffb347" },
   { value: "Yellow", label: "Yellow", color: "#ffd84d" },
@@ -33,22 +36,38 @@ const COLOR_OPTIONS = [
   { value: "Chocolate", label: "Chocolate", color: "#8a5a3a" },
 ];
 
-function toNumber(value, fallback) {
+function cleanNumber(value, fallback = 1) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function AudioTrackInput({ value, onChange }) {
+  return (
+    <div style={styles.trackInputRow}>
+      <div style={styles.audioTrackPrefix}>A</div>
+
+      <div style={styles.trackNumberInput}>
+        <ModuleNumberInput
+          min={1}
+          value={value || 1}
+          onChange={(nextValue) =>
+            onChange(Math.max(1, cleanNumber(nextValue, 1)))
+          }
+        />
+      </div>
+    </div>
+  );
 }
 
 function ColorDot({ color, isClear = false }) {
   return (
     <span
       style={{
-        width: 10,
-        height: 10,
-        borderRadius: "50%",
+        ...styles.colorDot,
         background: isClear ? "transparent" : color,
-        border: isClear ? "1px solid #777" : "1px solid rgba(255,255,255,0.35)",
-        display: "inline-block",
-        flexShrink: 0,
+        border: isClear
+          ? "1px solid #777"
+          : "1px solid rgba(255,255,255,0.35)",
       }}
     />
   );
@@ -67,10 +86,7 @@ function ColorSelect({ value, onChange }) {
         onClick={() => setOpen((current) => !current)}
       >
         <span style={styles.colorLabel}>
-          <ColorDot
-            color={selected.color}
-            isClear={selected.value === "Clear Color"}
-          />
+          <ColorDot color={selected.color} isClear={selected.isClear} />
           {selected.label}
         </span>
 
@@ -96,10 +112,7 @@ function ColorSelect({ value, onChange }) {
               }}
             >
               <span style={styles.colorLabel}>
-                <ColorDot
-                  color={option.color}
-                  isClear={option.value === "Clear Color"}
-                />
+                <ColorDot color={option.color} isClear={option.isClear} />
                 {option.label}
               </span>
 
@@ -138,38 +151,42 @@ function AudioClipObjectUI({ module, onUpdate }) {
         />
       </ModuleSettingsField>
 
-      <ModuleSettingsField label="Find by">
+      <ModuleSettingsField label="Find Clip">
         <ModuleSelect
           value="underPlayhead"
           onChange={() => {}}
-          options={[{ value: "underPlayhead", label: "Under playhead" }]}
+          options={[{ value: "underPlayhead", label: "Under Playhead" }]}
         />
       </ModuleSettingsField>
 
-      <ModuleSettingsField label="Audio Track">
-        <ModuleNumberInput
-          min={1}
+      <ModuleSettingsField label="Source Track">
+        <AudioTrackInput
           value={settings.trackIndex ?? 1}
-          onChange={(value) =>
-            update("trackIndex", Math.max(1, toNumber(value, 1)))
-          }
+          onChange={(value) => update("trackIndex", value)}
         />
       </ModuleSettingsField>
+
+      {action === "rename" && (
+        <ModuleSettingsField label="New Clip Name">
+          <ModuleTextInput
+            value={settings.name ?? "Audio Clip"}
+            placeholder="New clip name..."
+            onChange={(value) => update("name", value)}
+          />
+        </ModuleSettingsField>
+      )}
 
       {action === "duplicate" && (
-        <ModuleSettingsField label="Duplicate To Audio Track">
-          <ModuleNumberInput
-            min={1}
+        <ModuleSettingsField label="Duplicate To Track">
+          <AudioTrackInput
             value={settings.duplicateToTrackIndex ?? 2}
-            onChange={(value) =>
-              update("duplicateToTrackIndex", Math.max(1, toNumber(value, 2)))
-            }
+            onChange={(value) => update("duplicateToTrackIndex", value)}
           />
         </ModuleSettingsField>
       )}
 
       {action === "color" && (
-        <ModuleSettingsField label="Color">
+        <ModuleSettingsField label="Clip Color">
           <ColorSelect
             value={settings.color || "Blue"}
             onChange={(value) => update("color", value)}
@@ -181,6 +198,33 @@ function AudioClipObjectUI({ module, onUpdate }) {
 }
 
 const styles = {
+  trackInputRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    width: "100%",
+  },
+
+  audioTrackPrefix: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    border: "1px solid #3f8cff",
+    background: "#101010",
+    color: "#3f8cff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 13,
+    fontWeight: 800,
+    flexShrink: 0,
+  },
+
+  trackNumberInput: {
+    flex: 1,
+    minWidth: 0,
+  },
+
   colorSelectWrap: {
     position: "relative",
     width: "100%",
@@ -231,6 +275,14 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: 8,
+  },
+
+  colorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: "50%",
+    display: "inline-block",
+    flexShrink: 0,
   },
 
   chevron: {

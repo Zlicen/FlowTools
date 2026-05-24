@@ -6,8 +6,7 @@ let backendCompatibility = {
 
 export function setBackendModuleCapabilities(nextCapabilities) {
   backendCompatibility = {
-    objectActionRules:
-      nextCapabilities?.objectActionRules || {},
+    objectActionRules: nextCapabilities?.objectActionRules || {},
   };
 }
 
@@ -22,6 +21,8 @@ export function getModuleDisplayName(module) {
 }
 
 function addWarning(warnings, moduleId, message) {
+  if (!moduleId || !message) return;
+
   if (!warnings[moduleId]) {
     warnings[moduleId] = [];
   }
@@ -31,9 +32,42 @@ function addWarning(warnings, moduleId, message) {
   }
 }
 
-function getWarningsForBlock(block, warnings) {
+function normalizeValidationResult(result) {
+  if (!result) return [];
+
+  if (Array.isArray(result)) {
+    return result.filter(Boolean);
+  }
+
+  if (typeof result === "string") {
+    return [result];
+  }
+
+  return [];
+}
+
+function getWarningsForModule(module, warnings) {
+  const definition = getModuleDefinition(module);
+
+  if (!definition || typeof definition.validateSettings !== "function") {
+    return;
+  }
+
+  const result = definition.validateSettings(module.settings || {}, module);
+  const messages = normalizeValidationResult(result);
+
+  for (const message of messages) {
+    addWarning(warnings, module.id, message);
+  }
+}
+
+function getWarningsForOldObjectActionSystem(block, warnings) {
   const objects = block.objects || [];
   const actions = block.actions || [];
+
+  if (objects.length === 0 && actions.length === 0) {
+    return;
+  }
 
   const rules = backendCompatibility.objectActionRules || {};
 
@@ -59,6 +93,16 @@ function getWarningsForBlock(block, warnings) {
       }
     }
   }
+}
+
+function getWarningsForBlock(block, warnings) {
+  const modules = block.modules || [];
+
+  for (const module of modules) {
+    getWarningsForModule(module, warnings);
+  }
+
+  getWarningsForOldObjectActionSystem(block, warnings);
 }
 
 export function getModuleWarningsById(blockOrBlocks) {

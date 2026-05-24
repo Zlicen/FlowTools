@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import {
   ModuleNumberInput,
   ModuleSelect,
@@ -12,29 +14,189 @@ const ACTION_OPTIONS = [
 ];
 
 const POSITION_OPTIONS = [
-  { value: "currentPlayhead", label: "Current playhead" },
-  { value: "frame", label: "Frame" },
-  { value: "timecode", label: "Timecode" },
+  { value: "currentPlayhead", label: "Current Playhead" },
+  { value: "frame", label: "Specific Frame" },
+  { value: "timecode", label: "Specific Timecode" },
 ];
 
 const COLOR_OPTIONS = [
-  { value: "Blue", label: "Blue" },
-  { value: "Cyan", label: "Cyan" },
-  { value: "Green", label: "Green" },
-  { value: "Yellow", label: "Yellow" },
-  { value: "Red", label: "Red" },
-  { value: "Pink", label: "Pink" },
-  { value: "Purple", label: "Purple" },
-  { value: "Fuchsia", label: "Fuchsia" },
-  { value: "Rose", label: "Rose" },
-  { value: "Lavender", label: "Lavender" },
-  { value: "Sky", label: "Sky" },
-  { value: "Mint", label: "Mint" },
-  { value: "Lemon", label: "Lemon" },
-  { value: "Sand", label: "Sand" },
-  { value: "Cocoa", label: "Cocoa" },
-  { value: "Cream", label: "Cream" },
+  { value: "Blue", label: "Blue", color: "#2f8cff" },
+  { value: "Cyan", label: "Cyan", color: "#24d6d6" },
+  { value: "Green", label: "Green", color: "#3fd13f" },
+  { value: "Yellow", label: "Yellow", color: "#ffd12a" },
+  { value: "Red", label: "Red", color: "#ff3b24" },
+  { value: "Pink", label: "Pink", color: "#f04bd6" },
+  { value: "Purple", label: "Purple", color: "#9b4df2" },
+  { value: "Fuchsia", label: "Fuchsia", color: "#d94a9b" },
+  { value: "Rose", label: "Rose", color: "#ff8fb3" },
+  { value: "Lavender", label: "Lavender", color: "#b7a7e8" },
+  { value: "Sky", label: "Sky", color: "#8ed8ff" },
+  { value: "Mint", label: "Mint", color: "#76ff3b" },
+  { value: "Lemon", label: "Lemon", color: "#e7ff3f" },
+  { value: "Sand", label: "Sand", color: "#d8a35e" },
+  { value: "Cocoa", label: "Cocoa", color: "#9b6a4a" },
+  { value: "Cream", label: "Cream", color: "#eaded1" },
 ];
+
+function clampNumber(value, min = 0, max = null) {
+  const number = Number(value);
+  const clean = Number.isFinite(number) ? number : min;
+  const clampedMin = Math.max(min, clean);
+  return max === null ? clampedMin : Math.min(max, clampedMin);
+}
+
+function pad2(value) {
+  return String(clampNumber(value, 0)).padStart(2, "0");
+}
+
+function parseTimecode(timecode) {
+  const parts = String(timecode || "00:00:00:00")
+    .split(":")
+    .map((part) => Number(part));
+
+  return {
+    hours: Number.isFinite(parts[0]) ? parts[0] : 0,
+    minutes: Number.isFinite(parts[1]) ? parts[1] : 0,
+    seconds: Number.isFinite(parts[2]) ? parts[2] : 0,
+    frames: Number.isFinite(parts[3]) ? parts[3] : 0,
+  };
+}
+
+function buildTimecode(parts) {
+  return [
+    pad2(parts.hours),
+    pad2(clampNumber(parts.minutes, 0, 59)),
+    pad2(clampNumber(parts.seconds, 0, 59)),
+    pad2(parts.frames),
+  ].join(":");
+}
+
+function ColorDot({ color }) {
+  return <span style={{ ...styles.colorDot, background: color }} />;
+}
+
+function ColorSelect({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const selected =
+    COLOR_OPTIONS.find((option) => option.value === value) || COLOR_OPTIONS[0];
+
+  return (
+    <div style={styles.colorSelectWrap}>
+      <button
+        type="button"
+        style={styles.colorSelectButton}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span style={styles.colorLabel}>
+          <ColorDot color={selected.color} />
+          {selected.label}
+        </span>
+
+        <span style={styles.chevron}>▾</span>
+      </button>
+
+      {open && (
+        <div style={styles.colorMenu}>
+          {COLOR_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              style={{
+                ...styles.colorOption,
+                background:
+                  option.value === selected.value
+                    ? "rgba(255,255,255,0.08)"
+                    : "transparent",
+              }}
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+            >
+              <span style={styles.colorLabel}>
+                <ColorDot color={option.color} />
+                {option.label}
+              </span>
+
+              {option.value === selected.value && (
+                <span style={styles.check}>✓</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TimecodeSmallInput({ label, value, max, onChange }) {
+  return (
+    <div style={styles.timecodePart}>
+      <span style={styles.timecodeLabel}>{label}</span>
+
+      <input
+        type="number"
+        min={0}
+        max={max ?? undefined}
+        value={value}
+        onChange={(event) => {
+          const nextValue = clampNumber(event.target.value, 0, max ?? null);
+          onChange(nextValue);
+        }}
+        style={styles.timecodeInput}
+      />
+    </div>
+  );
+}
+
+function TimecodeInput({ value, onChange }) {
+  const current = parseTimecode(value);
+
+  function updatePart(key, nextValue) {
+    const next = {
+      ...current,
+      [key]: nextValue,
+    };
+
+    onChange(buildTimecode(next));
+  }
+
+  return (
+    <div style={styles.timecodeWrap}>
+      <TimecodeSmallInput
+        label="HH"
+        value={current.hours}
+        onChange={(value) => updatePart("hours", value)}
+      />
+
+      <span style={styles.timecodeSeparator}>:</span>
+
+      <TimecodeSmallInput
+        label="MM"
+        value={current.minutes}
+        max={59}
+        onChange={(value) => updatePart("minutes", value)}
+      />
+
+      <span style={styles.timecodeSeparator}>:</span>
+
+      <TimecodeSmallInput
+        label="SS"
+        value={current.seconds}
+        max={59}
+        onChange={(value) => updatePart("seconds", value)}
+      />
+
+      <span style={styles.timecodeSeparator}>:</span>
+
+      <TimecodeSmallInput
+        label="FF"
+        value={current.frames}
+        onChange={(value) => updatePart("frames", value)}
+      />
+    </div>
+  );
+}
 
 function MarkerObjectUI({ module, onUpdate }) {
   const settings = module.settings || {};
@@ -60,9 +222,7 @@ function MarkerObjectUI({ module, onUpdate }) {
     action === "note";
 
   const needsPosition =
-    action === "add" ||
-    action === "move" ||
-    action === "duplicate";
+    action === "add" || action === "move" || action === "duplicate";
 
   return (
     <ModuleSettingsBox>
@@ -75,7 +235,7 @@ function MarkerObjectUI({ module, onUpdate }) {
       </ModuleSettingsField>
 
       {needsFindByName && (
-        <ModuleSettingsField label="Find by name">
+        <ModuleSettingsField label="Source Marker">
           <ModuleTextInput
             value={settings.markerName || ""}
             placeholder="Existing marker name..."
@@ -89,10 +249,10 @@ function MarkerObjectUI({ module, onUpdate }) {
           <ModuleSettingsField
             label={
               action === "add"
-                ? "Position"
+                ? "Add Marker At"
                 : action === "move"
-                  ? "Move to"
-                  : "Duplicate to"
+                  ? "Move Marker To"
+                  : "Duplicate Marker To"
             }
           >
             <ModuleSelect
@@ -103,7 +263,7 @@ function MarkerObjectUI({ module, onUpdate }) {
           </ModuleSettingsField>
 
           {position === "frame" && (
-            <ModuleSettingsField label="Frame">
+            <ModuleSettingsField label="Target Frame">
               <ModuleNumberInput
                 min={0}
                 value={settings.frame || 0}
@@ -115,10 +275,9 @@ function MarkerObjectUI({ module, onUpdate }) {
           )}
 
           {position === "timecode" && (
-            <ModuleSettingsField label="Timecode">
-              <ModuleTextInput
-                value={settings.timecode || ""}
-                placeholder="Example: 00:01:25:10"
+            <ModuleSettingsField label="Target Timecode">
+              <TimecodeInput
+                value={settings.timecode || "00:00:00:00"}
                 onChange={(value) => update("timecode", value)}
               />
             </ModuleSettingsField>
@@ -128,7 +287,7 @@ function MarkerObjectUI({ module, onUpdate }) {
 
       {action === "add" && (
         <>
-          <ModuleSettingsField label="Name">
+          <ModuleSettingsField label="Marker Name">
             <ModuleTextInput
               value={settings.name || ""}
               placeholder="Marker name..."
@@ -136,15 +295,14 @@ function MarkerObjectUI({ module, onUpdate }) {
             />
           </ModuleSettingsField>
 
-          <ModuleSettingsField label="Color">
-            <ModuleSelect
+          <ModuleSettingsField label="Marker Color">
+            <ColorSelect
               value={settings.color || "Blue"}
               onChange={(value) => update("color", value)}
-              options={COLOR_OPTIONS}
             />
           </ModuleSettingsField>
 
-          <ModuleSettingsField label="Note">
+          <ModuleSettingsField label="Marker Note">
             <ModuleTextInput
               value={settings.note || ""}
               placeholder="Marker note..."
@@ -155,7 +313,7 @@ function MarkerObjectUI({ module, onUpdate }) {
       )}
 
       {action === "rename" && (
-        <ModuleSettingsField label="New name">
+        <ModuleSettingsField label="New Marker Name">
           <ModuleTextInput
             value={settings.newName || ""}
             placeholder="New marker name..."
@@ -165,17 +323,16 @@ function MarkerObjectUI({ module, onUpdate }) {
       )}
 
       {action === "color" && (
-        <ModuleSettingsField label="New color">
-          <ModuleSelect
+        <ModuleSettingsField label="New Marker Color">
+          <ColorSelect
             value={settings.newColor || "Blue"}
             onChange={(value) => update("newColor", value)}
-            options={COLOR_OPTIONS}
           />
         </ModuleSettingsField>
       )}
 
       {action === "note" && (
-        <ModuleSettingsField label="New note">
+        <ModuleSettingsField label="New Marker Note">
           <ModuleTextInput
             value={settings.newNote || ""}
             placeholder="New marker note..."
@@ -186,5 +343,121 @@ function MarkerObjectUI({ module, onUpdate }) {
     </ModuleSettingsBox>
   );
 }
+
+const styles = {
+  colorSelectWrap: {
+    position: "relative",
+    width: "100%",
+  },
+
+  colorSelectButton: {
+    width: "100%",
+    background: "#111",
+    color: "white",
+    border: "1px solid #333",
+    borderRadius: 8,
+    padding: "8px 9px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    cursor: "pointer",
+  },
+
+  colorMenu: {
+    position: "absolute",
+    top: "calc(100% + 6px)",
+    left: 0,
+    right: 0,
+    background: "#151515",
+    border: "1px solid #333",
+    borderRadius: 10,
+    padding: 6,
+    zIndex: 999,
+    maxHeight: 260,
+    overflowY: "auto",
+    boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
+  },
+
+  colorOption: {
+    width: "100%",
+    color: "white",
+    border: "none",
+    borderRadius: 7,
+    padding: "7px 8px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    cursor: "pointer",
+    textAlign: "left",
+  },
+
+  colorLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  colorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: "50%",
+    border: "1px solid rgba(255,255,255,0.35)",
+    display: "inline-block",
+    flexShrink: 0,
+  },
+
+  chevron: {
+    opacity: 0.65,
+  },
+
+  check: {
+    opacity: 0.8,
+  },
+
+  timecodeWrap: {
+    display: "flex",
+    alignItems: "flex-end",
+    gap: 4,
+    width: "100%",
+    minWidth: 0,
+  },
+
+  timecodePart: {
+    width: 48,
+    minWidth: 0,
+    display: "flex",
+    flexDirection: "column",
+    gap: 3,
+  },
+
+  timecodeLabel: {
+    fontSize: 9,
+    opacity: 0.6,
+    fontWeight: 700,
+    lineHeight: 1,
+  },
+
+  timecodeInput: {
+    width: "100%",
+    height: 32,
+    boxSizing: "border-box",
+    background: "#101010",
+    color: "white",
+    border: "1px solid #333",
+    borderRadius: 7,
+    padding: "0 5px",
+    fontSize: 12,
+    fontWeight: 600,
+    outline: "none",
+  },
+
+  timecodeSeparator: {
+    paddingBottom: 8,
+    opacity: 0.55,
+    fontWeight: 800,
+    fontSize: 12,
+    flexShrink: 0,
+  },
+};
 
 export default MarkerObjectUI;
