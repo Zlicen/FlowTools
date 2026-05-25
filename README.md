@@ -10,12 +10,21 @@ AI-assisted development tools are used for parts of coding, brainstorming and do
 <br>
 
 ## Features
-**Automation** - Create automation workflows and execute them using keybinds or with a single click.
+- Automation system
+- Custom automation editor
+- Keybind support
+- Overview dashboard panels
+- Timeline/video automation tools
+- Import/export automations
+- Save system with persistent settings
 
 <br>
 
 ## Installation
-Installation instructions coming soon.
+1. Download `FlowTools-0.1.0.exe`
+2. Run installer as Administrator
+3. Restart DaVinci Resolve
+4. Open Workspace → Workflow Integrations → FlowTools
 
 <br>
 
