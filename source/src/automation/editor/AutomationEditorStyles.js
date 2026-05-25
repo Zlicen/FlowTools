@@ -6,30 +6,9 @@ export const styles = {
     gap: 0,
     minHeight: 0,
     height: "100%",
+    minWidth: 0,
+    overflow: "hidden",
   },
-
-  panelResizer: {
-  width: "12px",
-  minWidth: "12px",
-  height: "100%",
-  cursor: "col-resize",
-  display: "flex",
-  alignItems: "stretch",
-  justifyContent: "center",
-  padding: 0,
-  boxSizing: "border-box",
-  userSelect: "none",
-  touchAction: "none",
-  zIndex: 10,
-},
-
-  panelResizerLine: {
-  width: "2px",
-  height: "100%",
-  borderRadius: "999px",
-  backgroundColor: "rgba(255,255,255,.16)",
-  pointerEvents: "none",
-},
 
   libraryPanel: {
     backgroundColor: automationTheme.panelColor,
@@ -37,7 +16,8 @@ export const styles = {
     borderRadius: "14px",
     padding: "12px",
     minHeight: 0,
-    overflow: "auto",
+    minWidth: 0,
+    overflow: "hidden auto",
   },
 
   libraryHeader: {
@@ -45,6 +25,7 @@ export const styles = {
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: "12px",
+    minWidth: 0,
   },
 
   panelTitle: {
@@ -61,6 +42,7 @@ export const styles = {
   categoryList: {
     display: "grid",
     gap: "10px",
+    minWidth: 0,
   },
 
   categoryCard: {
@@ -68,6 +50,7 @@ export const styles = {
     border: "1px solid #2b2b2b",
     borderRadius: "12px",
     overflow: "hidden",
+    minWidth: 0,
   },
 
   categoryHeader: {
@@ -82,16 +65,22 @@ export const styles = {
     cursor: "pointer",
     fontWeight: "bold",
     textAlign: "left",
+    minWidth: 0,
   },
 
   categoryHeaderName: {
     flex: 1,
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
   },
 
   libraryModuleList: {
     display: "grid",
     gap: "7px",
     padding: "8px",
+    minWidth: 0,
   },
 
   libraryModule: {
@@ -105,6 +94,7 @@ export const styles = {
     justifyContent: "space-between",
     gap: "8px",
     textAlign: "left",
+    minWidth: 0,
   },
 
   libraryModuleName: {
@@ -117,9 +107,11 @@ export const styles = {
 
   workspace: {
     minHeight: 0,
+    minWidth: 0,
     display: "flex",
     flexDirection: "column",
     gap: "12px",
+    overflow: "hidden",
   },
 
   workspaceTop: {
@@ -130,6 +122,8 @@ export const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: "12px",
+    minWidth: 0,
   },
 
   workspaceTitle: {
@@ -151,11 +145,14 @@ export const styles = {
     padding: "9px 12px",
     fontWeight: "bold",
     cursor: "pointer",
+    whiteSpace: "nowrap",
   },
 
   blockList: {
     minHeight: 0,
-    overflow: "auto",
+    minWidth: 0,
+    overflowY: "auto",
+    overflowX: "hidden",
     display: "grid",
     gap: "12px",
     paddingRight: "4px",
@@ -175,6 +172,8 @@ export const styles = {
     borderRadius: "16px",
     padding: "12px",
     boxShadow: "0 10px 30px rgba(0,0,0,.25)",
+    minWidth: 0,
+    overflow: "hidden",
   },
 
   blockHeader: {
@@ -182,20 +181,22 @@ export const styles = {
     alignItems: "center",
     justifyContent: "space-between",
     gap: "12px",
+    minWidth: 0,
   },
 
   blockTitleArea: {
-  flex: 1,
-  display: "flex",
-  alignItems: "center",
-  gap: "8px",
-  minWidth: 0,
-},
+    flex: 1,
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    minWidth: 0,
+  },
 
   blockMoveButtons: {
     display: "flex",
     flexDirection: "column",
     gap: "2px",
+    flexShrink: 0,
   },
 
   blockMoveButton: {
@@ -223,33 +224,35 @@ export const styles = {
     display: "grid",
     placeItems: "center",
     fontWeight: "bold",
+    flexShrink: 0,
   },
 
   blockNameButton: {
-  border: "none",
-  background: "transparent",
-  color: "inherit",
-  textAlign: "left",
-  fontWeight: "bold",
-  fontSize: "16px",
-  maxWidth: "220px",
-  minWidth: 0,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-  cursor: "pointer",
-},
+    border: "none",
+    background: "transparent",
+    color: "inherit",
+    textAlign: "left",
+    fontWeight: "bold",
+    fontSize: "16px",
+    maxWidth: "220px",
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    cursor: "pointer",
+  },
+
   blockNameInput: {
-  width: "220px",
-  maxWidth: "220px",
-  backgroundColor: "rgba(0,0,0,.2)",
-  color: "inherit",
-  border: "1px solid rgba(255,255,255,.25)",
-  borderRadius: "8px",
-  padding: "6px 8px",
-  fontWeight: "bold",
-  outline: "none",
-},
+    width: "220px",
+    maxWidth: "220px",
+    backgroundColor: "rgba(0,0,0,.2)",
+    color: "inherit",
+    border: "1px solid rgba(255,255,255,.25)",
+    borderRadius: "8px",
+    padding: "6px 8px",
+    fontWeight: "bold",
+    outline: "none",
+  },
 
   blockStats: {
     justifySelf: "center",
@@ -257,12 +260,14 @@ export const styles = {
     fontSize: "12px",
     fontWeight: "bold",
     textAlign: "center",
+    flexShrink: 0,
   },
 
   blockButtons: {
     display: "flex",
     alignItems: "center",
     gap: "6px",
+    flexShrink: 0,
   },
 
   renameButton: {
@@ -277,15 +282,15 @@ export const styles = {
   },
 
   runBlockButton: {
-    border: "none",
-    borderRadius: "8px",
-    padding: "7px 10px",
-    backgroundColor: "#2f9e44",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: "bold",
-    whiteSpace: "nowrap",
-  },
+  border: "none",
+  borderRadius: "8px",
+  padding: "7px 10px",
+  backgroundColor: "#15803d",
+  color: "white",
+  cursor: "pointer",
+  fontWeight: "bold",
+  whiteSpace: "nowrap",
+},
 
   iconButton: {
     width: "32px",
@@ -296,6 +301,7 @@ export const styles = {
     color: "inherit",
     cursor: "pointer",
     fontWeight: "bold",
+    flexShrink: 0,
   },
 
   iconDeleteButton: {
@@ -307,6 +313,7 @@ export const styles = {
     color: "inherit",
     cursor: "pointer",
     fontWeight: "bold",
+    flexShrink: 0,
   },
 
   expandButton: {
@@ -318,6 +325,7 @@ export const styles = {
     color: "inherit",
     cursor: "pointer",
     fontWeight: "bold",
+    flexShrink: 0,
   },
 
   blockBody: {
@@ -325,6 +333,7 @@ export const styles = {
     display: "grid",
     gridTemplateColumns: "1fr",
     gap: "10px",
+    minWidth: 0,
   },
 
   blockLane: {
@@ -333,6 +342,7 @@ export const styles = {
     border: "1px solid rgba(255,255,255,.1)",
     borderRadius: "12px",
     padding: "10px",
+    minWidth: 0,
   },
 
   availableDropSection: {
@@ -357,6 +367,7 @@ export const styles = {
   pillList: {
     display: "grid",
     gap: "7px",
+    minWidth: 0,
   },
 
   dropZone: {
@@ -379,6 +390,7 @@ export const styles = {
     display: "flex",
     flexDirection: "column",
     gap: "4px",
+    minWidth: 0,
   },
 
   moduleDropLine: {
@@ -429,6 +441,7 @@ export const styles = {
   pillButtons: {
     display: "flex",
     gap: "4px",
+    flexShrink: 0,
   },
 
   pillMiniButton: {
@@ -523,7 +536,8 @@ export const styles = {
     borderRadius: "14px",
     padding: "12px",
     minHeight: 0,
-    overflow: "auto",
+    minWidth: 0,
+    overflow: "hidden auto",
   },
 
   settingsTitle: {

@@ -1,18 +1,20 @@
 const WorkflowIntegration = require("../WorkflowIntegration.node");
 
-const { getModuleRunner } = require("./automationModules/moduleRunners");
-
 const {
   getAllModuleCapabilities,
 } = require("./automationModules/moduleCapabilities");
 
+const {
+  executeAutomation,
+} = require("./automationCore/automationExecutionEngine");
+
 const PLUGIN_ID = "com.flowtools";
 
 let resolve = null;
+let isAutomationRunning = false;
 
 async function initResolve() {
-  const initialized =
-    await WorkflowIntegration.Initialize(PLUGIN_ID);
+  const initialized = await WorkflowIntegration.Initialize(PLUGIN_ID);
 
   if (!initialized) {
     console.log("Failed to initialize Resolve.");
@@ -26,11 +28,11 @@ async function initResolve() {
     return null;
   }
 
-  console.log("Zlice Resolve Panel connected to Resolve.");
+  console.log("FlowTools connected to Resolve.");
   return resolve;
 }
 
-async function getCurrentTimeline() {
+async function ensureResolve() {
   if (!resolve) {
     await initResolve();
   }
@@ -39,218 +41,69 @@ async function getCurrentTimeline() {
     throw new Error("Resolve is not connected.");
   }
 
-  const projectManager =
-    await resolve.GetProjectManager();
-
-  const project =
-    await projectManager.GetCurrentProject();
-
-  if (!project) {
-    throw new Error("No Resolve project is open.");
-  }
-
-  const timeline =
-    await project.GetCurrentTimeline();
-
-  if (!timeline) {
-    throw new Error("No current timeline found.");
-  }
-
-  return {
-    project,
-    timeline,
-  };
-}
-
-function createBlockRuntime() {
-  return {
-    variables: {},
-    objects: [],
-    shouldStop: false,
-  };
-}
-
-async function runModule({
-  resolve,
-  project,
-  timeline,
-  automation,
-  module,
-  runtime,
-}) {
-  const runner =
-    getModuleRunner(module.type);
-
-  if (!runner) {
-    throw new Error(
-      `No runner found for module type: ${module.type}`
-    );
-  }
-
-  return await runner({
-    resolve,
-    project,
-    timeline,
-    automation,
-    module,
-    runtime,
-  });
-}
-
-async function runAutomationBlockInternal({
-  resolve,
-  project,
-  timeline,
-  automation,
-  block,
-}) {
-  const runtime = createBlockRuntime();
-
-  const context = {
-    resolve,
-    project,
-    timeline,
-    automation,
-    runtime,
-  };
-
-  const modules =
-    block.modules ||
-    block.objects ||
-    [];
-
-  if (modules.length === 0) {
-    throw new Error(
-      `Block "${block.name}" is missing modules.`
-    );
-  }
-
-  for (const module of modules) {
-    if (runtime.shouldStop) break;
-
-    await runModule({
-      ...context,
-      module,
-    });
-  }
-
-  runtime.objects = [];
-}
-
-async function runAutomation(automation) {
-  const { project, timeline } =
-    await getCurrentTimeline();
-
-  const blocks = automation.blocks || [];
-
-  for (const block of blocks) {
-    await runAutomationBlockInternal({
-      resolve,
-      project,
-      timeline,
-      automation,
-      block,
-    });
-  }
-
-  return {
-    success: true,
-    message: "Automation completed.",
-  };
-}
-
-async function runSingleAutomationBlock({
-  automation,
-  blockId,
-}) {
-  const { project, timeline } =
-    await getCurrentTimeline();
-
-  const blocks = automation.blocks || [];
-
-  const block =
-    blocks.find((item) => item.id === blockId);
-
-  if (!block) {
-    throw new Error(
-      `Block with id "${blockId}" was not found.`
-    );
-  }
-
-  await runAutomationBlockInternal({
-    resolve,
-    project,
-    timeline,
-    automation,
-    block,
-  });
-
-  return {
-    success: true,
-    message: `Block "${block.name || "Unnamed Block"}" completed.`,
-  };
-}
-
-function registerAutomationRunnerIpc(ipcMain) {
-  ipcMain.handle(
-    "automation-module-capabilities",
-    async () => {
-      return {
-        success: true,
-        capabilities:
-          getAllModuleCapabilities(),
-      };
-    }
-  );
-
-  ipcMain.handle(
-    "automation-run",
-    async (event, automation) => {
-      try {
-        return await runAutomation(automation);
-      } catch (error) {
-        console.error(
-          "Automation run failed:",
-          error
-        );
-
-        return {
-          success: false,
-          error: String(error),
-        };
-      }
-    }
-  );
-
-  ipcMain.handle(
-    "automation-run-block",
-    async (event, payload) => {
-      try {
-        return await runSingleAutomationBlock({
-          automation: payload.automation,
-          blockId: payload.blockId,
-        });
-      } catch (error) {
-        console.error(
-          "Automation block run failed:",
-          error
-        );
-
-        return {
-          success: false,
-          error: String(error),
-        };
-      }
-    }
-  );
+  return resolve;
 }
 
 function getResolve() {
   return resolve;
 }
 
+async function runAutomationRequest({ automation, blockId = null }) {
+  if (isAutomationRunning) {
+    return {
+      success: false,
+      error: "Another automation is already running.",
+    };
+  }
+
+  isAutomationRunning = true;
+
+  try {
+    const activeResolve = await ensureResolve();
+
+    return await executeAutomation({
+      resolve: activeResolve,
+      automation,
+      blockId,
+    });
+  } catch (error) {
+    console.error("FlowTools automation failed:", error);
+
+    return {
+      success: false,
+      error: String(error?.message || error),
+    };
+  } finally {
+    isAutomationRunning = false;
+  }
+}
+
+function registerAutomationRunnerIpc(ipcMain) {
+  ipcMain.handle("automation-module-capabilities", async () => {
+    return {
+      success: true,
+      capabilities: getAllModuleCapabilities(),
+    };
+  });
+
+  ipcMain.handle("automation-run", async (event, automation) => {
+    return await runAutomationRequest({
+      automation,
+      blockId: null,
+    });
+  });
+
+  ipcMain.handle("automation-run-block", async (event, payload) => {
+    return await runAutomationRequest({
+      automation: payload.automation,
+      blockId: payload.blockId,
+    });
+  });
+}
+
 module.exports = {
   initResolve,
   getResolve,
   registerAutomationRunnerIpc,
+  runAutomationRequest,
 };

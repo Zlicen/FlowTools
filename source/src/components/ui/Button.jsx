@@ -47,32 +47,57 @@ function Button({
 
 const shared = {
   dark: {
-    backgroundColor: "#353535",
+    backgroundColor: "#525252",
     color: "white",
   },
+
   darkHover: {
-    backgroundColor: "#424242",
+    backgroundColor: "#666666",
   },
+
   purple: {
     backgroundColor: "#5b35ff",
     color: "white",
   },
+
   purpleHover: {
-    backgroundColor: "#6845ff",
+    backgroundColor: "#6f50ff",
   },
+
   green: {
-    backgroundColor: "#2f8f46",
+    backgroundColor: "#15803d",
     color: "white",
   },
+
   greenHover: {
-    backgroundColor: "#36a852",
+    backgroundColor: "#16a34a",
   },
-  red: {
-    backgroundColor: "#5a1f1f",
+
+  amber: {
+    backgroundColor: "#a16207",
     color: "white",
   },
+
+  amberHover: {
+    backgroundColor: "#c27a0a",
+  },
+
+  blue: {
+    backgroundColor: "#1d4ed8",
+    color: "white",
+  },
+
+  blueHover: {
+    backgroundColor: "#2563eb",
+  },
+
+  red: {
+    backgroundColor: "#991b1b",
+    color: "white",
+  },
+
   redHover: {
-    backgroundColor: "#702828",
+    backgroundColor: "#b91c1c",
   },
 };
 
@@ -106,12 +131,13 @@ const styles = {
     edit: shared.purple,
     run: shared.green,
     save: shared.green,
-    create: shared.dark,
-    add: shared.dark,
-    import: shared.purple,
-    sync: shared.purple,
+    create: shared.green,
+    add: shared.green,
+    import: shared.blue,
+    export: shared.blue,
+    sync: shared.amber,
+    keybind: shared.amber,
     rename: shared.dark,
-    cancel: shared.dark,
     delete: shared.red,
   },
 
@@ -127,12 +153,13 @@ const styles = {
     edit: shared.purpleHover,
     run: shared.greenHover,
     save: shared.greenHover,
-    create: shared.darkHover,
-    add: shared.darkHover,
-    import: shared.purpleHover,
-    sync: shared.purpleHover,
+    create: shared.greenHover,
+    add: shared.greenHover,
+    import: shared.blueHover,
+    export: shared.blueHover,
+    sync: shared.amberHover,
+    keybind: shared.amberHover,
     rename: shared.darkHover,
-    cancel: shared.darkHover,
     delete: shared.redHover,
   },
 

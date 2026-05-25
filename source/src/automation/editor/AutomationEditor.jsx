@@ -19,12 +19,6 @@ import { InfoIcon } from "./EditorTooltip";
 import { styles } from "./automationEditorStyles";
 import {
   MODULE_DRAG_DISTANCE,
-  MIN_LEFT_PANEL_WIDTH,
-  MAX_LEFT_PANEL_WIDTH,
-  MIN_RIGHT_PANEL_WIDTH,
-  MAX_RIGHT_PANEL_WIDTH,
-  MIN_CENTER_PANEL_WIDTH,
-  RESIZER_WIDTH,
   getModuleKindFromCategory,
   getCollectionKeyFromKind,
   getCategoryDescription,
@@ -36,7 +30,6 @@ function AutomationEditor({
   automation,
   onChange,
   onUpdateAutomation,
-  onRun,
   onRunBlock,
   runResult,
 }) {
@@ -46,10 +39,7 @@ function AutomationEditor({
   const [dragData, setDragData] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
   const [dragPosition, setDragPosition] = useState(null);
-  const [leftPanelWidth, setLeftPanelWidth] = useState(MIN_LEFT_PANEL_WIDTH);
-  const [rightPanelWidth, setRightPanelWidth] = useState(MIN_RIGHT_PANEL_WIDTH);
 
-  const editorShellRef = useRef(null);
   const dragDataRef = useRef(null);
   const dropTargetRef = useRef(null);
 
@@ -65,21 +55,17 @@ function AutomationEditor({
 
   const selectedModule = useMemo(() => {
     for (const block of blocks) {
-      const collections = [{ collectionKey: "modules", moduleKind: "module" }];
+      const module = (block.modules || []).find(
+        (item) => item.id === selectedModuleId
+      );
 
-      for (const collection of collections) {
-        const module = (block[collection.collectionKey] || []).find(
-          (item) => item.id === selectedModuleId
-        );
-
-        if (module) {
-          return {
-            module,
-            block,
-            collectionKey: collection.collectionKey,
-            moduleKind: collection.moduleKind,
-          };
-        }
+      if (module) {
+        return {
+          module,
+          block,
+          collectionKey: "modules",
+          moduleKind: "module",
+        };
       }
     }
 
@@ -223,7 +209,12 @@ function AutomationEditor({
       const collectionKey = moduleElement.getAttribute("data-collection-key");
       const moduleId = moduleElement.getAttribute("data-automation-module-id");
 
-      if (collectionKey && blockId && moduleId && canDropInZone(collectionKey, data)) {
+      if (
+        collectionKey &&
+        blockId &&
+        moduleId &&
+        canDropInZone(collectionKey, data)
+      ) {
         if (data.source === "placed-module" && data.moduleId === moduleId) {
           setCurrentDropTarget(null);
           return;
@@ -258,7 +249,13 @@ function AutomationEditor({
     setCurrentDropTarget(null);
   }
 
-  function insertLibraryModule(blockId, collectionKey, moduleDefinition, targetModuleId, position) {
+  function insertLibraryModule(
+    blockId,
+    collectionKey,
+    moduleDefinition,
+    targetModuleId,
+    position
+  ) {
     const instance = createModuleInstance(moduleDefinition);
 
     const nextBlocks = blocks.map((block) => {
@@ -269,7 +266,9 @@ function AutomationEditor({
       if (!targetModuleId || position === "end") {
         currentItems.push(instance);
       } else {
-        const targetIndex = currentItems.findIndex((item) => item.id === targetModuleId);
+        const targetIndex = currentItems.findIndex(
+          (item) => item.id === targetModuleId
+        );
         const insertIndex =
           targetIndex === -1
             ? currentItems.length
@@ -327,7 +326,9 @@ function AutomationEditor({
       if (!targetModuleId || position === "end") {
         targetItems.push(movedModule);
       } else {
-        const targetIndex = targetItems.findIndex((item) => item.id === targetModuleId);
+        const targetIndex = targetItems.findIndex(
+          (item) => item.id === targetModuleId
+        );
         const insertIndex =
           targetIndex === -1
             ? targetItems.length
@@ -357,7 +358,14 @@ function AutomationEditor({
     }
 
     if (dropData.type === "block" && data.source === "block") {
-      commitBlocks(reorderBlocks(blocks, data.blockId, dropData.blockId, dropData.position));
+      commitBlocks(
+        reorderBlocks(
+          blocks,
+          data.blockId,
+          dropData.blockId,
+          dropData.position
+        )
+      );
       clearDragState();
       return;
     }
@@ -395,19 +403,19 @@ function AutomationEditor({
     }
   }
 
-  function handleZoneDragOver(event, block, collectionKey) {
+  function handleZoneDragOver(event) {
     event.preventDefault();
     event.stopPropagation();
     updateDropTargetFromPoint(event.clientX, event.clientY);
   }
 
-  function handleZoneDrop(event, block, collectionKey) {
+  function handleZoneDrop(event) {
     event.preventDefault();
     event.stopPropagation();
     handleDropTarget();
   }
 
-  function handleModuleDragOver(event, block, module, moduleKind, index) {
+  function handleModuleDragOver(event) {
     event.preventDefault();
     event.stopPropagation();
     updateDropTargetFromPoint(event.clientX, event.clientY);
@@ -424,7 +432,10 @@ function AutomationEditor({
     let didStartDrag = false;
 
     function handlePointerMove(moveEvent) {
-      const distance = Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY);
+      const distance = Math.hypot(
+        moveEvent.clientX - startX,
+        moveEvent.clientY - startY
+      );
 
       if (!didStartDrag && distance >= MODULE_DRAG_DISTANCE) {
         didStartDrag = true;
@@ -470,7 +481,13 @@ function AutomationEditor({
     document.addEventListener("pointercancel", handlePointerCancel);
   }
 
-  function startPlacedModulePointerDrag(event, block, module, moduleKind, collectionKey) {
+  function startPlacedModulePointerDrag(
+    event,
+    block,
+    module,
+    moduleKind,
+    collectionKey
+  ) {
     if (event.button !== 0) return;
 
     const startX = event.clientX;
@@ -478,7 +495,10 @@ function AutomationEditor({
     let didStartDrag = false;
 
     function handlePointerMove(moveEvent) {
-      const distance = Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY);
+      const distance = Math.hypot(
+        moveEvent.clientX - startX,
+        moveEvent.clientY - startY
+      );
 
       if (!didStartDrag && distance >= MODULE_DRAG_DISTANCE) {
         didStartDrag = true;
@@ -526,16 +546,6 @@ function AutomationEditor({
     document.addEventListener("pointercancel", handlePointerCancel);
   }
 
-  function handleBlockDragStart(event, block) {
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", block.name);
-
-    setCurrentDragData({
-      source: "block",
-      blockId: block.id,
-    });
-  }
-
   function handleBlockDragOver(event, blockId) {
     if (dragDataRef.current?.source !== "block") return;
 
@@ -558,7 +568,10 @@ function AutomationEditor({
   function copyModule(block, collectionKey, module) {
     const nextBlock = {
       ...block,
-      [collectionKey]: [...(block[collectionKey] || []), duplicateModule(module)],
+      [collectionKey]: [
+        ...(block[collectionKey] || []),
+        duplicateModule(module),
+      ],
     };
 
     updateBlock(nextBlock);
@@ -567,7 +580,9 @@ function AutomationEditor({
   function deleteModule(block, collectionKey, moduleId) {
     const nextBlock = {
       ...block,
-      [collectionKey]: (block[collectionKey] || []).filter((module) => module.id !== moduleId),
+      [collectionKey]: (block[collectionKey] || []).filter(
+        (module) => module.id !== moduleId
+      ),
     };
 
     updateBlock(nextBlock);
@@ -580,88 +595,11 @@ function AutomationEditor({
   function updateSelectedModule(updatedModule) {
     if (!selectedModule) return;
 
-    const updatedBlock = updateModuleInBlock(selectedModule.block, updatedModule);
+    const updatedBlock = updateModuleInBlock(
+      selectedModule.block,
+      updatedModule
+    );
     updateBlock(updatedBlock);
-  }
-
-  function startPanelResize(event, panelSide) {
-    if (event.button !== 0) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    const shell = editorShellRef.current;
-    if (!shell) return;
-
-    const shellRect = shell.getBoundingClientRect();
-    const startLeftWidth = leftPanelWidth;
-    const startRightWidth = rightPanelWidth;
-
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-
-    function clamp(value, min, max) {
-      return Math.max(min, Math.min(max, value));
-    }
-
-    function handlePointerMove(moveEvent) {
-      const maxLeftWidth =
-        shellRect.width -
-        startRightWidth -
-        MIN_CENTER_PANEL_WIDTH -
-        RESIZER_WIDTH * 2;
-
-      const maxRightWidth =
-        shellRect.width -
-        startLeftWidth -
-        MIN_CENTER_PANEL_WIDTH -
-        RESIZER_WIDTH * 2;
-
-      if (panelSide === "left") {
-        const nextLeftWidth = moveEvent.clientX - shellRect.left;
-
-        setLeftPanelWidth(
-  clamp(
-    nextLeftWidth,
-    MIN_LEFT_PANEL_WIDTH,
-    Math.min(MAX_LEFT_PANEL_WIDTH, maxLeftWidth)
-  )
-);
-      }
-
-      if (panelSide === "right") {
-        const nextRightWidth = shellRect.right - moveEvent.clientX;
-
-        setRightPanelWidth(
-  clamp(
-    nextRightWidth,
-    MIN_RIGHT_PANEL_WIDTH,
-    Math.min(MAX_RIGHT_PANEL_WIDTH, maxRightWidth)
-  )
-);
-      }
-    }
-
-    function cleanup() {
-      document.removeEventListener("pointermove", handlePointerMove);
-      document.removeEventListener("pointerup", handlePointerUp);
-      document.removeEventListener("pointercancel", handlePointerCancel);
-
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    }
-
-    function handlePointerUp() {
-      cleanup();
-    }
-
-    function handlePointerCancel() {
-      cleanup();
-    }
-
-    document.addEventListener("pointermove", handlePointerMove);
-    document.addEventListener("pointerup", handlePointerUp);
-    document.addEventListener("pointercancel", handlePointerCancel);
   }
 
   function renderModulePill({ module, block, moduleKind, collectionKey, index }) {
@@ -704,8 +642,8 @@ function AutomationEditor({
         data-automation-zone="true"
         data-block-id={block.id}
         data-collection-key={collectionKey}
-        onDragOver={(event) => handleZoneDragOver(event, block, collectionKey)}
-        onDrop={(event) => handleZoneDrop(event, block, collectionKey)}
+        onDragOver={handleZoneDragOver}
+        onDrop={handleZoneDrop}
       >
         <div style={styles.laneHeader}>
           <h3 style={styles.laneTitle}>{title}</h3>
@@ -738,7 +676,7 @@ function AutomationEditor({
   }
 
   function renderFloatingModule() {
-    if (!dragData) return null;
+    if (!dragData || !dragPosition) return null;
 
     let label = "";
 
@@ -760,8 +698,6 @@ function AutomationEditor({
       label = block?.name || "Block";
     }
 
-    if (!dragPosition) return null;
-
     return (
       <div
         style={{
@@ -780,7 +716,9 @@ function AutomationEditor({
       return (
         <aside style={styles.settingsPanel}>
           <h2 style={styles.settingsTitle}>Settings</h2>
-          <div style={styles.settingsEmpty}>Select a module to edit its settings.</div>
+          <div style={styles.settingsEmpty}>
+            Select a module to edit its settings.
+          </div>
         </aside>
       );
     }
@@ -795,7 +733,9 @@ function AutomationEditor({
 
         <div style={styles.settingsModuleTopRow}>
           <div>
-            <h3 style={styles.settingsModuleName}>{definition?.name || module.type}</h3>
+            <h3 style={styles.settingsModuleName}>
+              {definition?.name || module.type}
+            </h3>
             <div style={styles.settingsModuleBlock}>{block.name}</div>
           </div>
         </div>
@@ -811,10 +751,10 @@ function AutomationEditor({
 
   return (
     <div
-      ref={editorShellRef}
       style={{
         ...styles.editorShell,
-        gridTemplateColumns: `${leftPanelWidth}px ${RESIZER_WIDTH}px minmax(0, 1fr) ${RESIZER_WIDTH}px ${rightPanelWidth}px`,
+        gridTemplateColumns:
+          "minmax(180px, 260px) minmax(320px, 1fr) minmax(200px, 300px)",
       }}
     >
       <div style={styles.libraryPanel}>
@@ -831,7 +771,10 @@ function AutomationEditor({
 
             return (
               <div key={category.id} style={styles.categoryCard}>
-                <button style={styles.categoryHeader} onClick={() => toggleCategory(category.id)}>
+                <button
+                  style={styles.categoryHeader}
+                  onClick={() => toggleCategory(category.id)}
+                >
                   <span>{isCollapsed ? "▶" : "▼"}</span>
                   <span style={styles.categoryHeaderName}>{category.name}</span>
                   <InfoIcon text={getCategoryDescription(category.id)} />
@@ -840,8 +783,12 @@ function AutomationEditor({
                 {!isCollapsed && (
                   <div style={styles.libraryModuleList}>
                     {category.modules.map((moduleDefinition) => {
-                      const moduleKind = getModuleKindFromCategory(moduleDefinition.categoryId);
-                      const color = getCategoryColor(moduleDefinition.categoryId);
+                      const moduleKind = getModuleKindFromCategory(
+                        moduleDefinition.categoryId
+                      );
+                      const color = getCategoryColor(
+                        moduleDefinition.categoryId
+                      );
                       const textColor = getReadableTextColor(color);
 
                       return (
@@ -857,10 +804,12 @@ function AutomationEditor({
                           }
                           onClick={() => {
                             const firstBlock = blocks[0];
-                            const collectionKey = getCollectionKeyFromKind(moduleKind);
+                            const collectionKey =
+                              getCollectionKeyFromKind(moduleKind);
                             if (!collectionKey) return;
 
-                            const instance = createModuleInstance(moduleDefinition);
+                            const instance =
+                              createModuleInstance(moduleDefinition);
 
                             if (!firstBlock) {
                               const newBlock = createBlock();
@@ -909,19 +858,13 @@ function AutomationEditor({
         </div>
       </div>
 
-      <div
-        style={styles.panelResizer}
-        onPointerDown={(event) => startPanelResize(event, "left")}
-        title="Resize modules panel"
-      >
-        <div style={styles.panelResizerLine} />
-      </div>
-
       <main style={styles.workspace}>
         <div style={styles.workspaceTop}>
           <div>
             <h1 style={styles.workspaceTitle}>Automation</h1>
-            <div style={styles.workspaceSubtitle}>Objects with actions inside settings</div>
+            <div style={styles.workspaceSubtitle}>
+              Objects with actions inside settings
+            </div>
           </div>
 
           <button style={styles.addBlockButton} onClick={addBlock}>
@@ -952,10 +895,8 @@ function AutomationEditor({
               totalBlocks={blocks.length}
               toggleBlock={toggleBlock}
               renderBlockLane={renderBlockLane}
-              handleBlockDragStart={handleBlockDragStart}
               handleBlockDragOver={handleBlockDragOver}
               handleBlockDrop={handleBlockDrop}
-              clearDragState={clearDragState}
               onRunBlock={onRunBlock}
             />
           ))}
@@ -973,14 +914,6 @@ function AutomationEditor({
           </pre>
         )}
       </main>
-
-      <div
-        style={styles.panelResizer}
-        onPointerDown={(event) => startPanelResize(event, "right")}
-        title="Resize settings panel"
-      >
-        <div style={styles.panelResizerLine} />
-      </div>
 
       {renderSettingsPanel()}
       {renderFloatingModule()}

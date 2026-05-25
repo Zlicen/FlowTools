@@ -5,6 +5,7 @@ const { runMarkerTargetModule } = require("./objects/Marker/runner");
 const { runVideoClipTargetModule } = require("./objects/VideoClip/runner");
 const { runAudioClipTargetModule } = require("./objects/AudioClip/runner");
 const { runCompoundClipTargetModule } = require("./objects/CompoundClip/runner");
+const { runAutomationTargetModule } = require("./objects/Automation/runner");
 
 const moduleRunners = {
   "object-timeline": runTimelineTargetModule,
@@ -14,6 +15,7 @@ const moduleRunners = {
   "object-video-clip": runVideoClipTargetModule,
   "object-audio-clip": runAudioClipTargetModule,
   "object-compound-clip": runCompoundClipTargetModule,
+  "object-automation": runAutomationTargetModule,
 };
 
 function getModuleRunner(moduleType) {

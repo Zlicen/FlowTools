@@ -1,10 +1,4 @@
 export const MODULE_DRAG_DISTANCE = 6;
-export const MIN_LEFT_PANEL_WIDTH = 250;
-export const MAX_LEFT_PANEL_WIDTH = 400;
-export const MIN_RIGHT_PANEL_WIDTH = 250;
-export const MAX_RIGHT_PANEL_WIDTH = 400;
-export const MIN_CENTER_PANEL_WIDTH = 520;
-export const RESIZER_WIDTH = 12;
 
 export function getDropPositionFromPoint(clientY, element) {
   const rect = element.getBoundingClientRect();

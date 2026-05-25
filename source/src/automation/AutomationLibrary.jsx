@@ -1,4 +1,12 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+import { Button } from "../components/ui";
+import {
+  createKeybindTargetId,
+  findKeybindConflict,
+  formatHotkey,
+  normalizeKeyboardEvent,
+} from "../keybinds";
 
 function sanitizeFileName(value) {
   return String(value || "automation")
@@ -23,9 +31,7 @@ function normalizeImportedAutomation(parsed) {
     automation = parsed;
   }
 
-  if (!automation || typeof automation !== "object") {
-    return null;
-  }
+  if (!automation || typeof automation !== "object") return null;
 
   return {
     ...automation,
@@ -66,19 +72,99 @@ function exportAutomation(automation) {
 function AutomationLibrary({
   automations,
   runningAutomationId,
+  keybindBindings = {},
   onAddAutomation,
   onDeleteAutomation,
   onRenameAutomation,
   onEditAutomation,
   onRunAutomation,
   onImportAutomation,
+  onSetKeybind,
+  onClearKeybind,
 }) {
   const fileInputRef = useRef(null);
+  const hotkeyRecorderRef = useRef(null);
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [renameTarget, setRenameTarget] = useState(null);
   const [renameValue, setRenameValue] = useState("");
   const [messagePopup, setMessagePopup] = useState(null);
+  const [hotkeyTarget, setHotkeyTarget] = useState(null);
+  const [recordedHotkey, setRecordedHotkey] = useState([]);
+
+  useEffect(() => {
+  if (!hotkeyTarget) {
+    delete document.body.dataset.flowtoolsRecordingHotkey;
+    return;
+  }
+
+  document.body.dataset.flowtoolsRecordingHotkey = "true";
+
+  const timeoutId = setTimeout(() => {
+    hotkeyRecorderRef.current?.focus();
+  }, 0);
+
+  return () => {
+    clearTimeout(timeoutId);
+    delete document.body.dataset.flowtoolsRecordingHotkey;
+  };
+}, [hotkeyTarget]);
+
+function getRecordedHotkeyConflict() {
+  if (!hotkeyTarget || !recordedHotkey?.length) return null;
+
+  const targetId = createKeybindTargetId("automation", hotkeyTarget.id);
+
+  return findKeybindConflict(keybindBindings, targetId, recordedHotkey);
+}
+
+  function getAutomationKeybind(automation) {
+    const targetId = createKeybindTargetId("automation", automation.id);
+    return keybindBindings?.[targetId] || null;
+  }
+
+  async function handleRunAutomation(automation) {
+    if (typeof onRunAutomation !== "function") return;
+    await onRunAutomation(automation);
+  }
+
+  async function confirmHotkey() {
+    if (!hotkeyTarget || typeof onSetKeybind !== "function") return;
+
+    const conflict = getRecordedHotkeyConflict();
+
+if (conflict) {
+  setMessagePopup({
+    title: "Keybind already used",
+    message: `This keybind is already used by "${
+      conflict.binding.label || conflict.targetId
+    }".`,
+  });
+  return;
+}
+
+    const result = await onSetKeybind(hotkeyTarget, recordedHotkey || []);
+
+    if (result?.success === false) {
+      setMessagePopup({
+        title: "Keybind already used",
+        message: result.error || "This keybind is already assigned.",
+      });
+      return;
+    }
+
+    setHotkeyTarget(null);
+    setRecordedHotkey([]);
+  }
+
+  async function clearHotkey() {
+    if (!hotkeyTarget || typeof onClearKeybind !== "function") return;
+
+    await onClearKeybind(hotkeyTarget);
+
+    setHotkeyTarget(null);
+    setRecordedHotkey([]);
+  }
 
   async function handleImportFile(event) {
     const file = event.target.files?.[0];
@@ -118,7 +204,8 @@ function AutomationLibrary({
 
       setMessagePopup({
         title: "Import failed",
-        message: "Could not read this automation file. Make sure it is a valid JSON export.",
+        message:
+          "Could not read this automation file. Make sure it is a valid JSON export.",
       });
     }
   }
@@ -149,32 +236,30 @@ function AutomationLibrary({
   return (
     <section style={styles.card}>
       <div style={styles.header}>
-  <h2 style={styles.title}>Automations</h2>
+        <h2 style={styles.title}>Automations</h2>
 
-  <div style={styles.headerButtons}>
-    <button
-      style={styles.addButton}
-      onClick={onAddAutomation}
-    >
-      + Add Automation
-    </button>
+        <div style={styles.headerButtons}>
+          <Button variant="add" size="sm" onClick={onAddAutomation}>
+            + Add Automation
+          </Button>
 
-    <button
-      style={styles.importButton}
-      onClick={() => fileInputRef.current?.click()}
-    >
-      Import Automation
-    </button>
-  </div>
+          <Button
+            variant="import"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            Import Automation
+          </Button>
+        </div>
 
-  <input
-    ref={fileInputRef}
-    type="file"
-    accept=".json,.flowtools-automation.json,application/json"
-    style={{ display: "none" }}
-    onChange={handleImportFile}
-  />
-</div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json,.flowtools-automation.json,application/json"
+          style={{ display: "none" }}
+          onChange={handleImportFile}
+        />
+      </div>
 
       <div style={styles.list}>
         {automations.length === 0 && (
@@ -183,55 +268,78 @@ function AutomationLibrary({
 
         {automations.map((automation) => {
           const isRunning = runningAutomationId === automation.id;
+          const keybind = getAutomationKeybind(automation);
 
           return (
             <div key={automation.id} style={styles.item}>
-              <div>
-                <div style={styles.name}>{automation.name}</div>
+              <div style={styles.infoArea}>
+                <div style={styles.nameLine}>
+                  <span style={styles.name}>{automation.name}</span>
+
+                  {keybind?.enabled && keybind?.keys?.length > 0 && (
+                    <span style={styles.hotkeyBadge}>
+                      {formatHotkey(keybind)}
+                    </span>
+                  )}
+                </div>
+
                 <div style={styles.meta}>
-                  Steps: {getAutomationStepCount(automation)}
+                  Blocks: {getAutomationStepCount(automation)}
                 </div>
               </div>
 
               <div style={styles.buttons}>
-                <button
-                  style={{
-                    ...styles.runButton,
-                    ...(isRunning ? styles.disabledButton : {}),
-                  }}
+                <Button
+                  variant="run"
+                  size="sm"
                   disabled={isRunning}
-                  onClick={() => onRunAutomation(automation)}
+                  onClick={() => handleRunAutomation(automation)}
                 >
                   {isRunning ? "Running..." : "Run"}
-                </button>
+                </Button>
 
-                <button
-                  style={styles.editButton}
+                <Button
+                  variant="edit"
+                  size="sm"
                   onClick={() => onEditAutomation(automation.id)}
                 >
                   Edit
-                </button>
+                </Button>
 
-                <button
-                  style={styles.renameButton}
+                <Button
+                  variant="keybind"
+                  size="sm"
+                  onClick={() => {
+                    setHotkeyTarget(automation);
+                    setRecordedHotkey(keybind?.keys || []);
+                  }}
+                >
+                  Keybind
+                </Button>
+
+                <Button
+                  variant="rename"
+                  size="sm"
                   onClick={() => openRenamePopup(automation)}
                 >
                   Rename
-                </button>
+                </Button>
 
-                <button
-                  style={styles.exportButton}
+                <Button
+                  variant="export"
+                  size="sm"
                   onClick={() => exportAutomation(automation)}
                 >
                   Export
-                </button>
+                </Button>
 
-                <button
-                  style={styles.deleteButton}
+                <Button
+                  variant="delete"
+                  size="sm"
                   onClick={() => setDeleteTarget(automation)}
                 >
                   Delete
-                </button>
+                </Button>
               </div>
             </div>
           );
@@ -244,13 +352,13 @@ function AutomationLibrary({
           message={`Are you sure you want to delete "${deleteTarget.name}"? This cannot be undone.`}
           onClose={() => setDeleteTarget(null)}
         >
-          <button style={styles.secondaryPopupButton} onClick={() => setDeleteTarget(null)}>
+          <Button variant="rename" size="sm" onClick={() => setDeleteTarget(null)}>
             Cancel
-          </button>
+          </Button>
 
-          <button style={styles.dangerPopupButton} onClick={confirmDelete}>
+          <Button variant="delete" size="sm" onClick={confirmDelete}>
             Delete
-          </button>
+          </Button>
         </CustomPopup>
       )}
 
@@ -272,13 +380,78 @@ function AutomationLibrary({
           />
 
           <div style={styles.popupButtonRow}>
-            <button style={styles.secondaryPopupButton} onClick={() => setRenameTarget(null)}>
+            <Button
+              variant="rename"
+              size="sm"
+              onClick={() => setRenameTarget(null)}
+            >
               Cancel
-            </button>
+            </Button>
 
-            <button style={styles.primaryPopupButton} onClick={confirmRename}>
+            <Button variant="save" size="sm" onClick={confirmRename}>
               Rename
-            </button>
+            </Button>
+          </div>
+        </CustomPopup>
+      )}
+
+      {hotkeyTarget && (
+        <CustomPopup
+          title="Set keybind"
+          message={`Choose a keybind for "${hotkeyTarget.name}".`}
+          onClose={() => {
+            setHotkeyTarget(null);
+            setRecordedHotkey([]);
+          }}
+        >
+          <div
+            ref={hotkeyRecorderRef}
+            tabIndex={0}
+            style={styles.hotkeyRecorder}
+            onKeyDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+
+              const keys = normalizeKeyboardEvent(event);
+
+              if (keys.length > 0) {
+                setRecordedHotkey(keys);
+              }
+            }}
+          >
+            <span>Press keys...</span>
+            <strong>{formatHotkey({ keys: recordedHotkey || [] })}</strong>
+          </div>
+
+          {getRecordedHotkeyConflict() && (
+  <div style={styles.hotkeyConflict}>
+    Already used by{" "}
+    <strong>
+      {getRecordedHotkeyConflict().binding.label ||
+        getRecordedHotkeyConflict().targetId}
+    </strong>
+  </div>
+)}
+
+<div style={styles.popupButtonRow}>
+            <Button variant="rename" size="sm" onClick={clearHotkey}>
+              Clear
+            </Button>
+
+            <Button
+              variant="rename"
+              size="sm"
+              onClick={() => {
+                setHotkeyTarget(null);
+                setRecordedHotkey([]);
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button variant="save" size="sm" onClick={confirmHotkey}>
+              Save
+            </Button>
           </div>
         </CustomPopup>
       )}
@@ -289,9 +462,9 @@ function AutomationLibrary({
           message={messagePopup.message}
           onClose={() => setMessagePopup(null)}
         >
-          <button style={styles.primaryPopupButton} onClick={() => setMessagePopup(null)}>
+          <Button variant="save" size="sm" onClick={() => setMessagePopup(null)}>
             OK
-          </button>
+          </Button>
         </CustomPopup>
       )}
     </section>
@@ -341,14 +514,10 @@ const styles = {
     flex: 1,
   },
 
-  importButton: {
-    border: "none",
-    borderRadius: "9px",
-    padding: "9px 13px",
-    backgroundColor: "#5b35ff",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: "bold",
+  headerButtons: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
   },
 
   list: {
@@ -372,9 +541,41 @@ const styles = {
     gap: "12px",
   },
 
+  infoArea: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    justifyContent: "center",
+    minWidth: 0,
+  },
+
+  nameLine: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    marginBottom: "6px",
+    minWidth: 0,
+  },
+
   name: {
     fontWeight: "bold",
-    marginBottom: "6px",
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+
+  hotkeyBadge: {
+    flexShrink: 0,
+    borderRadius: "7px",
+    padding: "3px 7px",
+    backgroundColor: "#2b210b",
+    border: "1px solid #a16207",
+    color: "#fbbf24",
+    fontSize: "11px",
+    fontWeight: "900",
+    lineHeight: 1,
+    boxShadow: "inset 0 -1px 0 rgba(0,0,0,0.35)",
   },
 
   meta: {
@@ -386,61 +587,8 @@ const styles = {
     display: "flex",
     gap: "10px",
     alignItems: "center",
-  },
-
-  runButton: {
-    border: "none",
-    borderRadius: "9px",
-    padding: "9px 14px",
-    backgroundColor: "#2f9e44",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  disabledButton: {
-    opacity: 0.65,
-    cursor: "not-allowed",
-  },
-
-  editButton: {
-    border: "none",
-    borderRadius: "9px",
-    padding: "9px 14px",
-    backgroundColor: "#5b35ff",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  renameButton: {
-    border: "none",
-    borderRadius: "9px",
-    padding: "9px 14px",
-    backgroundColor: "#2b2b2b",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  exportButton: {
-    border: "none",
-    borderRadius: "9px",
-    padding: "9px 14px",
-    backgroundColor: "#1f6feb",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  deleteButton: {
-    border: "none",
-    borderRadius: "9px",
-    padding: "9px 14px",
-    backgroundColor: "#6f1f1f",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: "bold",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
   },
 
   popupBackdrop: {
@@ -518,50 +666,29 @@ const styles = {
     fontWeight: "bold",
   },
 
-  primaryPopupButton: {
-    border: "none",
-    borderRadius: "9px",
-    padding: "9px 14px",
-    backgroundColor: "#5b35ff",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: "bold",
+  hotkeyRecorder: {
+    width: "100%",
+    minHeight: "86px",
+    border: "1px dashed #555",
+    borderRadius: "12px",
+    backgroundColor: "#101010",
+    color: "#bbb",
+    display: "grid",
+    placeItems: "center",
+    gap: "8px",
+    outline: "none",
+    fontSize: "13px",
   },
 
-  secondaryPopupButton: {
-    border: "none",
-    borderRadius: "9px",
-    padding: "9px 14px",
-    backgroundColor: "#2b2b2b",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  dangerPopupButton: {
-    border: "none",
-    borderRadius: "9px",
-    padding: "9px 14px",
-    backgroundColor: "#7a1f1f",
-    color: "white",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  headerButtons: {
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-},
-
-addButton: {
-  border: "none",
-  borderRadius: "9px",
-  padding: "9px 13px",
-  backgroundColor: "#2f9e44",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: "bold",
+  hotkeyConflict: {
+  width: "100%",
+  border: "1px solid rgba(185,28,28,0.55)",
+  backgroundColor: "rgba(185,28,28,0.16)",
+  color: "#fecaca",
+  borderRadius: "10px",
+  padding: "9px 10px",
+  fontSize: "12px",
+  fontWeight: "700",
 },
 };
 

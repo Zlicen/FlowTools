@@ -13,7 +13,7 @@ export default {
 
   createDefaultSettings() {
     return {
-      action: "position",
+      action: "duplicate",
 
       trackIndex: 1,
 

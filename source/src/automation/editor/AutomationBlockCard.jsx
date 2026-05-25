@@ -1,4 +1,5 @@
 import { getReadableTextColor, automationTheme } from "../automationTheme";
+import { useAutomationStore } from "../../store";
 import { styles } from "./automationEditorStyles";
 
 function AutomationBlockCard({
@@ -19,9 +20,13 @@ function AutomationBlockCard({
   handleBlockDrop,
   onRunBlock,
 }) {
+  const { runningBlockId } = useAutomationStore();
+
   const blockTextColor = getReadableTextColor(automationTheme.blockColor);
   const isDraggingThisBlock =
     dragData?.source === "block" && dragData.blockId === block.id;
+
+  const isRunningThisBlock = runningBlockId === block.id;
 
   return (
     <div
@@ -121,17 +126,29 @@ function AutomationBlockCard({
 
         <div style={styles.blockButtons}>
           <button
-            style={styles.runBlockButton}
+            style={{
+              ...styles.runBlockButton,
+              ...(isRunningThisBlock
+                ? {
+                    opacity: 0.65,
+                    cursor: "not-allowed",
+                  }
+                : {}),
+            }}
+            disabled={isRunningThisBlock}
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => {
               event.stopPropagation();
+
+              if (isRunningThisBlock) return;
+
               if (typeof onRunBlock === "function") {
                 onRunBlock(block);
               }
             }}
             title="Run only this block"
           >
-            ▶ Run
+            {isRunningThisBlock ? "Running..." : "▶ Run"}
           </button>
 
           <button

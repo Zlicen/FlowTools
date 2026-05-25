@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   ModuleNumberInput,
@@ -76,15 +76,51 @@ function ColorDot({ color }) {
 }
 
 function ColorSelect({ value, onChange }) {
+  const wrapRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const [hoveredValue, setHoveredValue] = useState(null);
+
   const selected =
     COLOR_OPTIONS.find((option) => option.value === value) || COLOR_OPTIONS[0];
 
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event) {
+      if (!wrapRef.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  function handleSelectColor(option) {
+    onChange(option.value);
+    setHoveredValue(null);
+    setOpen(false);
+  }
+
   return (
-    <div style={styles.colorSelectWrap}>
+    <div ref={wrapRef} style={styles.colorSelectWrap}>
       <button
         type="button"
-        style={styles.colorSelectButton}
+        style={{
+          ...styles.colorSelectButton,
+          ...(open ? styles.colorSelectButtonOpen : {}),
+        }}
         onClick={() => setOpen((current) => !current)}
       >
         <span style={styles.colorLabel}>
@@ -92,37 +128,41 @@ function ColorSelect({ value, onChange }) {
           {selected.label}
         </span>
 
-        <span style={styles.chevron}>▾</span>
+        <span style={styles.chevron}>{open ? "▴" : "▾"}</span>
       </button>
 
       {open && (
         <div style={styles.colorMenu}>
-          {COLOR_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              style={{
-                ...styles.colorOption,
-                background:
-                  option.value === selected.value
-                    ? "rgba(255,255,255,0.08)"
-                    : "transparent",
-              }}
-              onClick={() => {
-                onChange(option.value);
-                setOpen(false);
-              }}
-            >
-              <span style={styles.colorLabel}>
-                <ColorDot color={option.color} />
-                {option.label}
-              </span>
+          {COLOR_OPTIONS.map((option) => {
+            const isSelected = option.value === selected.value;
+            const isHovered = option.value === hoveredValue;
 
-              {option.value === selected.value && (
-                <span style={styles.check}>✓</span>
-              )}
-            </button>
-          ))}
+            return (
+              <button
+                key={option.value}
+                type="button"
+                style={{
+                  ...styles.colorOption,
+                  ...(isHovered ? styles.colorOptionHover : {}),
+                  ...(isSelected ? styles.colorOptionSelected : {}),
+                }}
+                onMouseEnter={() => setHoveredValue(option.value)}
+                onMouseLeave={() => setHoveredValue(null)}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleSelectColor(option);
+                }}
+              >
+                <span style={styles.colorLabel}>
+                  <ColorDot color={option.color} />
+                  {option.label}
+                </span>
+
+                {isSelected && <span style={styles.check}>✓</span>}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -363,6 +403,10 @@ const styles = {
     cursor: "pointer",
   },
 
+  colorSelectButtonOpen: {
+    borderColor: "#5b35ff",
+  },
+
   colorMenu: {
     position: "absolute",
     top: "calc(100% + 6px)",
@@ -389,6 +433,15 @@ const styles = {
     alignItems: "center",
     cursor: "pointer",
     textAlign: "left",
+    background: "transparent",
+  },
+
+  colorOptionHover: {
+    background: "rgba(255,255,255,0.12)",
+  },
+
+  colorOptionSelected: {
+    background: "rgba(91,53,255,0.28)",
   },
 
   colorLabel: {

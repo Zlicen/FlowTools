@@ -1,0 +1,159 @@
+{
+  "saveSystemVersion": 1,
+  "id": "automation_1779728930907_92790",
+  "name": "Setup Tracks",
+  "blocks": [
+    {
+      "id": "block_1779715525224_8181",
+      "name": "Add Video Tracks",
+      "isOpen": false,
+      "modules": [
+        {
+          "id": "a7c48568-0fa3-4663-9172-d79fe0a6dfb2",
+          "type": "object-track",
+          "name": "Track",
+          "settings": {
+            "action": "add",
+            "trackType": "video",
+            "trackIndex": 4,
+            "findBy": "index",
+            "trackName": "",
+            "name": "VFX",
+            "newName": "",
+            "duplicateToIndex": 1
+          }
+        },
+        {
+          "id": "module_1779715541196_35374",
+          "type": "object-track",
+          "name": "Track",
+          "settings": {
+            "action": "add",
+            "trackType": "video",
+            "trackIndex": 3,
+            "findBy": "index",
+            "trackName": "",
+            "name": "Helkamera",
+            "newName": "",
+            "duplicateToIndex": 1
+          }
+        },
+        {
+          "id": "module_1779715541514_90281",
+          "type": "object-track",
+          "name": "Track",
+          "settings": {
+            "action": "add",
+            "trackType": "video",
+            "trackIndex": 2,
+            "findBy": "index",
+            "trackName": "",
+            "name": "Halvkamera",
+            "newName": "",
+            "duplicateToIndex": 1
+          }
+        },
+        {
+          "id": "module_1779715543686_9862",
+          "type": "object-track",
+          "name": "Track",
+          "settings": {
+            "action": "add",
+            "trackType": "video",
+            "trackIndex": 1,
+            "findBy": "index",
+            "trackName": "",
+            "name": "Spel",
+            "newName": "",
+            "duplicateToIndex": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "block_1779715601887_4412",
+      "name": "Add Audio Tracks",
+      "isOpen": false,
+      "modules": [
+        {
+          "id": "module_1779715601887_20436",
+          "type": "object-track",
+          "name": "Track",
+          "settings": {
+            "action": "add",
+            "trackType": "audio",
+            "trackIndex": 1,
+            "findBy": "index",
+            "trackName": "",
+            "name": "Mikrofon",
+            "newName": "",
+            "duplicateToIndex": 1
+          }
+        },
+        {
+          "id": "module_1779715617323_76200",
+          "type": "object-track",
+          "name": "Track",
+          "settings": {
+            "action": "add",
+            "trackType": "audio",
+            "trackIndex": 2,
+            "findBy": "index",
+            "trackName": "",
+            "name": "Discord",
+            "newName": "",
+            "duplicateToIndex": 1
+          }
+        },
+        {
+          "id": "module_1779715618159_6250",
+          "type": "object-track",
+          "name": "Track",
+          "settings": {
+            "action": "add",
+            "trackType": "audio",
+            "trackIndex": 3,
+            "findBy": "index",
+            "trackName": "",
+            "name": "Spelljud",
+            "newName": "",
+            "duplicateToIndex": 1
+          }
+        },
+        {
+          "id": "module_1779715618446_18784",
+          "type": "object-track",
+          "name": "Track",
+          "settings": {
+            "action": "add",
+            "trackType": "audio",
+            "trackIndex": 4,
+            "findBy": "index",
+            "trackName": "",
+            "name": "SFX",
+            "newName": "",
+            "duplicateToIndex": 1
+          }
+        },
+        {
+          "id": "module_1779715619352_37059",
+          "type": "object-track",
+          "name": "Track",
+          "settings": {
+            "action": "add",
+            "trackType": "audio",
+            "trackIndex": 5,
+            "findBy": "index",
+            "trackName": "",
+            "name": "Musik",
+            "newName": "",
+            "duplicateToIndex": 1
+          }
+        }
+      ]
+    }
+  ],
+  "steps": [],
+  "createdAt": "2026-05-25T17:08:50.907Z",
+  "updatedAt": "2026-05-25T17:33:25.710Z"
+}

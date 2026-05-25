@@ -5,6 +5,7 @@ import MarkerObject from "./Marker";
 import VideoClipObject from "./VideoClip";
 import AudioClipObject from "./AudioClip";
 import CompoundClipObject from "./CompoundClip";
+import AutomationObject from "./Automation";
 
 export const objectModules = [
   TimelineObject,
@@ -14,4 +15,5 @@ export const objectModules = [
   VideoClipObject,
   AudioClipObject,
   CompoundClipObject,
+  AutomationObject,
 ];

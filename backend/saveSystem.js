@@ -9,6 +9,7 @@ const SETTINGS_FOLDER = path.join(ROOT_SAVE_FOLDER, "settings");
 
 const AUTOMATION_INDEX_FILE = path.join(AUTOMATIONS_FOLDER, "index.json");
 const PROGRAM_SETTINGS_FILE = path.join(SETTINGS_FOLDER, "program-settings.json");
+const GLOBAL_KEYBINDS_FILE = path.join(SETTINGS_FOLDER, "global-keybinds.json");
 
 function ensureFolder(folderPath) {
   if (!fs.existsSync(folderPath)) {
@@ -32,7 +33,6 @@ function readJson(filePath, fallbackValue) {
 
 function writeJson(filePath, value) {
   ensureFolder(path.dirname(filePath));
-
   fs.writeFileSync(filePath, JSON.stringify(value, null, 2), "utf8");
 }
 
@@ -58,6 +58,29 @@ function createDefaultProgramSettings() {
   };
 }
 
+function createDefaultGlobalKeybinds() {
+  return {
+    saveSystemVersion: SAVE_SYSTEM_VERSION,
+    version: 1,
+    bindings: {},
+  };
+}
+
+function normalizeGlobalKeybinds(data) {
+  const fallback = createDefaultGlobalKeybinds();
+
+  return {
+    ...fallback,
+    ...(data || {}),
+    saveSystemVersion: SAVE_SYSTEM_VERSION,
+    version: 1,
+    bindings:
+      data && typeof data.bindings === "object" && !Array.isArray(data.bindings)
+        ? data.bindings
+        : {},
+  };
+}
+
 function normalizeAutomation(automation) {
   const now = new Date().toISOString();
 
@@ -67,13 +90,8 @@ function normalizeAutomation(automation) {
     id: automation.id,
     name: automation.name || "Untitled Automation",
 
-    blocks: Array.isArray(automation.blocks)
-      ? automation.blocks
-      : [],
-
-    steps: Array.isArray(automation.steps)
-      ? automation.steps
-      : [],
+    blocks: Array.isArray(automation.blocks) ? automation.blocks : [],
+    steps: Array.isArray(automation.steps) ? automation.steps : [],
 
     createdAt: automation.createdAt || now,
     updatedAt: automation.updatedAt || now,
@@ -102,6 +120,10 @@ function ensureSaveSystem() {
 
   if (!fs.existsSync(PROGRAM_SETTINGS_FILE)) {
     writeJson(PROGRAM_SETTINGS_FILE, createDefaultProgramSettings());
+  }
+
+  if (!fs.existsSync(GLOBAL_KEYBINDS_FILE)) {
+    writeJson(GLOBAL_KEYBINDS_FILE, createDefaultGlobalKeybinds());
   }
 }
 
@@ -136,7 +158,6 @@ function loadAutomations() {
 
   for (const automationId of index.automationIds) {
     const automationFile = getAutomationFile(automationId);
-
     const automation = readJson(automationFile, null);
 
     if (automation && automation.id) {
@@ -156,17 +177,12 @@ function saveAutomations(automations) {
     if (!automation || !automation.id) continue;
 
     const normalizedAutomation = normalizeAutomation(automation);
-
     automationIds.push(normalizedAutomation.id);
 
-    writeJson(
-      getAutomationFile(normalizedAutomation.id),
-      normalizedAutomation
-    );
+    writeJson(getAutomationFile(normalizedAutomation.id), normalizedAutomation);
   }
 
   saveAutomationIndex(automationIds);
-
   cleanupDeletedAutomationFolders(automationIds);
 
   return {
@@ -242,6 +258,27 @@ function saveProgramSettings(settings) {
   };
 }
 
+function loadGlobalKeybinds() {
+  ensureSaveSystem();
+
+  return normalizeGlobalKeybinds(
+    readJson(GLOBAL_KEYBINDS_FILE, createDefaultGlobalKeybinds())
+  );
+}
+
+function saveGlobalKeybinds(keybinds) {
+  ensureSaveSystem();
+
+  const normalized = normalizeGlobalKeybinds(keybinds);
+
+  writeJson(GLOBAL_KEYBINDS_FILE, normalized);
+
+  return {
+    success: true,
+    keybinds: normalized,
+  };
+}
+
 function resetSaveSystem() {
   fs.rmSync(ROOT_SAVE_FOLDER, {
     recursive: true,
@@ -278,6 +315,17 @@ function registerSaveSystemIpc(ipcMain) {
     return saveProgramSettings(settings);
   });
 
+  ipcMain.handle("save-system-load-global-keybinds", async () => {
+    return {
+      success: true,
+      keybinds: loadGlobalKeybinds(),
+    };
+  });
+
+  ipcMain.handle("save-system-save-global-keybinds", async (event, keybinds) => {
+    return saveGlobalKeybinds(keybinds);
+  });
+
   ipcMain.handle("save-system-reset", async () => {
     return resetSaveSystem();
   });
@@ -298,4 +346,6 @@ module.exports = {
   saveAutomations,
   loadProgramSettings,
   saveProgramSettings,
+  loadGlobalKeybinds,
+  saveGlobalKeybinds,
 };
