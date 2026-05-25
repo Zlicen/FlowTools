@@ -1,16 +1,24 @@
-const STORAGE_KEY = "zlice-automations";
+import {
+  loadAutomationsFromSaveSystem,
+  saveAutomationsToSaveSystem,
+} from "../api/saveSystemAPI";
 
-export function loadAutomations() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return Array.isArray(saved) ? saved : [];
-  } catch {
+export async function loadAutomations() {
+  const result = await loadAutomationsFromSaveSystem();
+
+  if (!result?.success) {
     return [];
   }
+
+  return Array.isArray(result.automations)
+    ? result.automations
+    : [];
 }
 
-export function saveAutomations(automations) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(automations));
+export async function saveAutomations(automations) {
+  const result = await saveAutomationsToSaveSystem(automations);
+
+  return result?.success === true;
 }
 
 export function createAutomationId() {

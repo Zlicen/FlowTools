@@ -1,0 +1,11 @@
+{
+  "saveSystemVersion": 1,
+  "appearance": {
+    "panelScale": 1,
+    "compactMode": false
+  },
+  "automationEditor": {
+    "leftPanelWidth": 300,
+    "rightPanelWidth": 300
+  }
+}

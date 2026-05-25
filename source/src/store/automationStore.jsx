@@ -1,4 +1,8 @@
-import { runAutomation as runAutomationInResolve } from "../api/automationAPI";
+import {
+  runAutomation as runAutomationInResolve,
+  runAutomationBlock as runAutomationBlockInResolve,
+} from "../api/automationAPI";
+
 import {
   createAutomationId,
   loadAutomations,
@@ -10,9 +14,14 @@ function createAutomation(name) {
     id: createAutomationId(),
     name,
     steps: [],
+    blocks: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
+}
+
+function cloneAutomation(automation) {
+  return JSON.parse(JSON.stringify(automation));
 }
 
 const subscribers = new Set();
@@ -22,6 +31,7 @@ let state = {
   editorAutomation: null,
   runMessage: "",
   isLoaded: false,
+  runningAutomationId: null,
 };
 
 function emit() {
@@ -38,8 +48,8 @@ function setState(updater) {
   emit();
 }
 
-function saveAutomations(nextAutomations) {
-  saveAutomationsToStorage(nextAutomations);
+async function saveAutomations(nextAutomations) {
+  await saveAutomationsToStorage(nextAutomations);
   setState({ automations: nextAutomations, isLoaded: true });
 }
 
@@ -57,21 +67,24 @@ export const automationStore = {
     return state;
   },
 
-  load() {
+  async load() {
     if (state.isLoaded) return;
 
+    const automations = await loadAutomations();
+
     setState({
-      automations: loadAutomations(),
+      automations,
       isLoaded: true,
     });
   },
 
-  createAutomation(name) {
+  async createAutomation(name) {
     const cleanName = String(name || "").trim();
     if (!cleanName) return null;
 
     const automation = createAutomation(cleanName);
-    saveAutomations([...state.automations, automation]);
+
+    await saveAutomations([...state.automations, automation]);
 
     return automation;
   },
@@ -80,21 +93,27 @@ export const automationStore = {
     const cleanName = String(name || "").trim();
     if (!cleanName) return;
 
-    setState({ editorAutomation: createAutomation(cleanName) });
+    setState({
+      editorAutomation: createAutomation(cleanName),
+    });
   },
 
   openEditor(id) {
     const automation = getAutomationById(id);
     if (!automation) return;
 
-    setState({ editorAutomation: automation });
+    setState({
+      editorAutomation: cloneAutomation(automation),
+    });
   },
 
   closeEditor() {
-    setState({ editorAutomation: null });
+    setState({
+      editorAutomation: null,
+    });
   },
 
-  saveFromEditor(updatedAutomation) {
+  async saveFromEditor(updatedAutomation) {
     if (!updatedAutomation) return;
 
     const automationToSave = {
@@ -112,21 +131,24 @@ export const automationStore = {
         )
       : [...state.automations, automationToSave];
 
-    saveAutomations(nextAutomations);
-    setState({ editorAutomation: null });
+    await saveAutomations(nextAutomations);
+
+    setState({
+      editorAutomation: null,
+    });
   },
 
-  deleteAutomation(id) {
-    saveAutomations(
+  async deleteAutomation(id) {
+    await saveAutomations(
       state.automations.filter((automation) => automation.id !== id)
     );
   },
 
-  renameAutomation(id, newName) {
+  async renameAutomation(id, newName) {
     const cleanName = String(newName || "").trim();
     if (!cleanName) return;
 
-    saveAutomations(
+    await saveAutomations(
       state.automations.map((automation) =>
         automation.id === id
           ? {
@@ -139,23 +161,77 @@ export const automationStore = {
     );
   },
 
+  async importAutomation(importedAutomation) {
+    if (!importedAutomation) return null;
+
+    const now = new Date().toISOString();
+
+    const importedName =
+      String(importedAutomation.name || "").trim() || "Imported Automation";
+
+    const automation = {
+      ...importedAutomation,
+      id: createAutomationId(),
+      name: importedName,
+      createdAt: now,
+      updatedAt: now,
+      blocks: Array.isArray(importedAutomation.blocks)
+        ? importedAutomation.blocks
+        : [],
+      steps: Array.isArray(importedAutomation.steps)
+        ? importedAutomation.steps
+        : [],
+    };
+
+    await saveAutomations([...state.automations, automation]);
+
+    return automation;
+  },
+
   async runAutomation(automation) {
     if (!automation) return;
 
-    setState({ runMessage: `Running "${automation.name}"...` });
+    setState({
+      runningAutomationId: automation.id,
+    });
 
     const result = await runAutomationInResolve(automation);
 
-    if (!result.success) {
-      setState({ runMessage: result.error || "Automation failed." });
+    setState({
+      runningAutomationId: null,
+    });
+
+    return result;
+  },
+
+  async runAutomationBlock(automation, blockId) {
+    if (!automation || !blockId) return;
+
+    const block = (automation.blocks || []).find((item) => item.id === blockId);
+    const blockName = block?.name || "Block";
+
+    setState({
+      runMessage: `Running block "${blockName}"...`,
+    });
+
+    const result = await runAutomationBlockInResolve(automation, blockId);
+
+    if (!result?.success) {
+      setState({
+        runMessage: result?.error || "Block failed.",
+      });
       return;
     }
 
-    setState({ runMessage: `Finished "${automation.name}".` });
+    setState({
+      runMessage: `Finished block "${blockName}".`,
+    });
 
     window.setTimeout(() => {
-      if (state.runMessage === `Finished "${automation.name}".`) {
-        setState({ runMessage: "" });
+      if (state.runMessage === `Finished block "${blockName}".`) {
+        setState({
+          runMessage: "",
+        });
       }
     }, 2500);
   },

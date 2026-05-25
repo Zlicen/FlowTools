@@ -97,7 +97,7 @@ async function runModule({
   });
 }
 
-async function runAutomationBlock({
+async function runAutomationBlockInternal({
   resolve,
   project,
   timeline,
@@ -144,7 +144,7 @@ async function runAutomation(automation) {
   const blocks = automation.blocks || [];
 
   for (const block of blocks) {
-    await runAutomationBlock({
+    await runAutomationBlockInternal({
       resolve,
       project,
       timeline,
@@ -155,6 +155,39 @@ async function runAutomation(automation) {
 
   return {
     success: true,
+    message: "Automation completed.",
+  };
+}
+
+async function runSingleAutomationBlock({
+  automation,
+  blockId,
+}) {
+  const { project, timeline } =
+    await getCurrentTimeline();
+
+  const blocks = automation.blocks || [];
+
+  const block =
+    blocks.find((item) => item.id === blockId);
+
+  if (!block) {
+    throw new Error(
+      `Block with id "${blockId}" was not found.`
+    );
+  }
+
+  await runAutomationBlockInternal({
+    resolve,
+    project,
+    timeline,
+    automation,
+    block,
+  });
+
+  return {
+    success: true,
+    message: `Block "${block.name || "Unnamed Block"}" completed.`,
   };
 }
 
@@ -178,6 +211,28 @@ function registerAutomationRunnerIpc(ipcMain) {
       } catch (error) {
         console.error(
           "Automation run failed:",
+          error
+        );
+
+        return {
+          success: false,
+          error: String(error),
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    "automation-run-block",
+    async (event, payload) => {
+      try {
+        return await runSingleAutomationBlock({
+          automation: payload.automation,
+          blockId: payload.blockId,
+        });
+      } catch (error) {
+        console.error(
+          "Automation block run failed:",
           error
         );
 

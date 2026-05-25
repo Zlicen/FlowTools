@@ -1,5 +1,4 @@
 import { useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { automationTheme, getReadableTextColor } from "../automationTheme";
 import {
   cloneBlocks,
@@ -14,179 +13,31 @@ import {
   updateModuleInBlock,
 } from "../modules/moduleHelpers";
 import { getModuleWarningsById } from "../modules/moduleCompatibility";
-
-const MODULE_DRAG_DISTANCE = 6;
-
-function getDropPositionFromPoint(clientY, element) {
-  const rect = element.getBoundingClientRect();
-  const y = clientY - rect.top;
-  return y < rect.height / 2 ? "before" : "after";
-}
-
-function getModuleKindFromCategory() {
-  return "module";
-}
-
-function getCollectionKeyFromKind() {
-  return "modules";
-}
-
-function getCategoryDescription(categoryId) {
-  if (categoryId === "objects") {
-    return "Drag objects into blocks and choose their action in settings.";
-  }
-
-  return "Automation modules.";
-}
-
-function getModuleLetter(moduleKind) {
-  if (moduleKind === "object") return "O";
-  if (moduleKind === "action") return "A";
-  return "M";
-}
-
-function reorderBlocks(currentBlocks, draggedBlockId, targetBlockId, position) {
-  if (draggedBlockId === targetBlockId) return currentBlocks;
-
-  const nextBlocks = [...currentBlocks];
-  const draggedIndex = nextBlocks.findIndex((block) => block.id === draggedBlockId);
-  const targetIndex = nextBlocks.findIndex((block) => block.id === targetBlockId);
-
-  if (draggedIndex === -1 || targetIndex === -1) return currentBlocks;
-
-  const [draggedBlock] = nextBlocks.splice(draggedIndex, 1);
-  const updatedTargetIndex = nextBlocks.findIndex((block) => block.id === targetBlockId);
-  const insertIndex = position === "after" ? updatedTargetIndex + 1 : updatedTargetIndex;
-
-  nextBlocks.splice(insertIndex, 0, draggedBlock);
-
-  return nextBlocks;
-}
-
-function reorderModules(currentModules, draggedModuleId, targetModuleId, position) {
-  if (draggedModuleId === targetModuleId) return currentModules;
-
-  const nextModules = [...currentModules];
-  const draggedIndex = nextModules.findIndex((module) => module.id === draggedModuleId);
-  const targetIndex = nextModules.findIndex((module) => module.id === targetModuleId);
-
-  if (draggedIndex === -1 || targetIndex === -1) return currentModules;
-
-  const [draggedModule] = nextModules.splice(draggedIndex, 1);
-  const updatedTargetIndex = nextModules.findIndex((module) => module.id === targetModuleId);
-  const insertIndex = position === "after" ? updatedTargetIndex + 1 : updatedTargetIndex;
-
-  nextModules.splice(insertIndex, 0, draggedModule);
-
-  return nextModules;
-}
-
-function getTooltipPosition(anchorElement) {
-  if (!anchorElement) {
-    return { top: 0, left: 0 };
-  }
-
-  const rect = anchorElement.getBoundingClientRect();
-  const tooltipWidth = 260;
-  const spacing = 10;
-
-  let left = rect.left + rect.width / 2 - tooltipWidth / 2;
-  let top = rect.bottom + spacing;
-
-  left = Math.max(12, Math.min(left, window.innerWidth - tooltipWidth - 12));
-
-  if (top + 90 > window.innerHeight) {
-    top = rect.top - 90 - spacing;
-  }
-
-  return {
-    top,
-    left,
-  };
-}
-
-function InfoIcon({ text }) {
-  if (!text) return null;
-
-  return (
-    <SmartTooltip content={text}>
-      <span style={styles.infoIcon}>i</span>
-    </SmartTooltip>
-  );
-}
-
-function WarningIcon({ warnings }) {
-  if (!warnings || warnings.length === 0) return null;
-
-  return (
-    <SmartTooltip content={warnings.join("\n")} variant="warning">
-      <span style={styles.warningIcon}>!</span>
-    </SmartTooltip>
-  );
-}
-
-function SmartTooltip({ children, content, variant = "info" }) {
-  const [isHovering, setIsHovering] = useState(false);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
-  const anchorRef = useRef(null);
-
-  function showTooltip(event) {
-    event.stopPropagation();
-
-    const rect = anchorRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const tooltipWidth = 260;
-    const spacing = 10;
-
-    let left = rect.left + rect.width / 2 - tooltipWidth / 2;
-    const top = rect.bottom + spacing;
-
-    left = Math.max(12, Math.min(left, window.innerWidth - tooltipWidth - 12));
-
-    setPosition({ top, left });
-    setIsHovering(true);
-  }
-
-  function hideTooltip(event) {
-    event.stopPropagation();
-    setIsHovering(false);
-  }
-
-  return (
-    <span
-      ref={anchorRef}
-      style={variant === "warning" ? styles.warningIconWrap : styles.infoWrap}
-      onMouseEnter={showTooltip}
-      onMouseLeave={hideTooltip}
-      onPointerDown={(event) => event.stopPropagation()}
-      onClick={(event) => event.stopPropagation()}
-    >
-      {children}
-
-      {isHovering &&
-        createPortal(
-          <div
-            style={{
-              ...styles.smartTooltip,
-              ...(variant === "warning" ? styles.smartWarningTooltip : {}),
-              top: position.top,
-              left: position.left,
-            }}
-          >
-            {content}
-          </div>,
-          document.body
-        )}
-    </span>
-  );
-}
+import AutomationBlockCard from "./AutomationBlockCard";
+import AutomationModulePill from "./AutomationModulePill";
+import { InfoIcon } from "./EditorTooltip";
+import { styles } from "./automationEditorStyles";
+import {
+  MODULE_DRAG_DISTANCE,
+  MIN_LEFT_PANEL_WIDTH,
+  MAX_LEFT_PANEL_WIDTH,
+  MIN_RIGHT_PANEL_WIDTH,
+  MAX_RIGHT_PANEL_WIDTH,
+  MIN_CENTER_PANEL_WIDTH,
+  RESIZER_WIDTH,
+  getModuleKindFromCategory,
+  getCollectionKeyFromKind,
+  getCategoryDescription,
+  getDropPositionFromPoint,
+  reorderBlocks,
+} from "./automationEditorUtils";
 
 function AutomationEditor({
   automation,
   onChange,
   onUpdateAutomation,
   onRun,
+  onRunBlock,
   runResult,
 }) {
   const [collapsedCategories, setCollapsedCategories] = useState({});
@@ -195,7 +46,10 @@ function AutomationEditor({
   const [dragData, setDragData] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
   const [dragPosition, setDragPosition] = useState(null);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(MIN_LEFT_PANEL_WIDTH);
+  const [rightPanelWidth, setRightPanelWidth] = useState(MIN_RIGHT_PANEL_WIDTH);
 
+  const editorShellRef = useRef(null);
   const dragDataRef = useRef(null);
   const dropTargetRef = useRef(null);
 
@@ -204,13 +58,14 @@ function AutomationEditor({
     [automation.blocks]
   );
 
-  const moduleWarningsById = useMemo(() => getModuleWarningsById(blocks), [blocks]);
+  const moduleWarningsById = useMemo(
+    () => getModuleWarningsById(blocks),
+    [blocks]
+  );
 
   const selectedModule = useMemo(() => {
     for (const block of blocks) {
-      const collections = [
-  { collectionKey: "modules", moduleKind: "module" },
-];
+      const collections = [{ collectionKey: "modules", moduleKind: "module" }];
 
       for (const collection of collections) {
         const module = (block[collection.collectionKey] || []).find(
@@ -271,9 +126,7 @@ function AutomationEditor({
   }
 
   function addBlock() {
-    const nextBlock = createBlock();
-
-    commitBlocks([...blocks, nextBlock]);
+    commitBlocks([...blocks, createBlock()]);
   }
 
   function updateBlockName(block, name) {
@@ -312,9 +165,8 @@ function AutomationEditor({
   function deleteBlock(blockId) {
     commitBlocks(blocks.filter((block) => block.id !== blockId));
 
-    if (selectedModule) {
-      const isInDeletedBlock = selectedModule.block.id === blockId;
-      if (isInDeletedBlock) setSelectedModuleId(null);
+    if (selectedModule?.block.id === blockId) {
+      setSelectedModuleId(null);
     }
   }
 
@@ -334,23 +186,24 @@ function AutomationEditor({
 
   function updateBlock(updatedBlock) {
     commitBlocks(
-      blocks.map((block) => (block.id === updatedBlock.id ? normalizeBlock(updatedBlock) : block))
+      blocks.map((block) =>
+        block.id === updatedBlock.id ? normalizeBlock(updatedBlock) : block
+      )
     );
   }
 
   function getCategoryColor(categoryId) {
-  if (categoryId === "objects") return automationTheme.objectColor;
-  if (categoryId === "actions") return automationTheme.actionColor;
-  if (categoryId === "targets") return automationTheme.targetColor;
+    if (categoryId === "objects") return automationTheme.objectColor;
+    if (categoryId === "actions") return automationTheme.actionColor;
+    if (categoryId === "targets") return automationTheme.targetColor;
 
-  return automationTheme.moduleColor;
-}
+    return automationTheme.moduleColor;
+  }
 
   function canDropInZone(collectionKey, data = dragDataRef.current) {
-  if (!data) return false;
-
-  return collectionKey === "modules";
-}
+    if (!data) return false;
+    return collectionKey === "modules";
+  }
 
   function updateDropTargetFromPoint(clientX, clientY) {
     const data = dragDataRef.current;
@@ -731,6 +584,86 @@ function AutomationEditor({
     updateBlock(updatedBlock);
   }
 
+  function startPanelResize(event, panelSide) {
+    if (event.button !== 0) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const shell = editorShellRef.current;
+    if (!shell) return;
+
+    const shellRect = shell.getBoundingClientRect();
+    const startLeftWidth = leftPanelWidth;
+    const startRightWidth = rightPanelWidth;
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function handlePointerMove(moveEvent) {
+      const maxLeftWidth =
+        shellRect.width -
+        startRightWidth -
+        MIN_CENTER_PANEL_WIDTH -
+        RESIZER_WIDTH * 2;
+
+      const maxRightWidth =
+        shellRect.width -
+        startLeftWidth -
+        MIN_CENTER_PANEL_WIDTH -
+        RESIZER_WIDTH * 2;
+
+      if (panelSide === "left") {
+        const nextLeftWidth = moveEvent.clientX - shellRect.left;
+
+        setLeftPanelWidth(
+  clamp(
+    nextLeftWidth,
+    MIN_LEFT_PANEL_WIDTH,
+    Math.min(MAX_LEFT_PANEL_WIDTH, maxLeftWidth)
+  )
+);
+      }
+
+      if (panelSide === "right") {
+        const nextRightWidth = shellRect.right - moveEvent.clientX;
+
+        setRightPanelWidth(
+  clamp(
+    nextRightWidth,
+    MIN_RIGHT_PANEL_WIDTH,
+    Math.min(MAX_RIGHT_PANEL_WIDTH, maxRightWidth)
+  )
+);
+      }
+    }
+
+    function cleanup() {
+      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
+      document.removeEventListener("pointercancel", handlePointerCancel);
+
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+
+    function handlePointerUp() {
+      cleanup();
+    }
+
+    function handlePointerCancel() {
+      cleanup();
+    }
+
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
+    document.addEventListener("pointercancel", handlePointerCancel);
+  }
+
   function renderModulePill({ module, block, moduleKind, collectionKey, index }) {
     return (
       <AutomationModulePill
@@ -877,7 +810,13 @@ function AutomationEditor({
   }
 
   return (
-    <div style={styles.editorShell}>
+    <div
+      ref={editorShellRef}
+      style={{
+        ...styles.editorShell,
+        gridTemplateColumns: `${leftPanelWidth}px ${RESIZER_WIDTH}px minmax(0, 1fr) ${RESIZER_WIDTH}px ${rightPanelWidth}px`,
+      }}
+    >
       <div style={styles.libraryPanel}>
         <div style={styles.libraryHeader}>
           <div>
@@ -889,14 +828,12 @@ function AutomationEditor({
         <div style={styles.categoryList}>
           {moduleCategories.map((category) => {
             const isCollapsed = collapsedCategories[category.id];
-            const categoryColor = getCategoryColor(category.id);
 
             return (
               <div key={category.id} style={styles.categoryCard}>
                 <button style={styles.categoryHeader} onClick={() => toggleCategory(category.id)}>
                   <span>{isCollapsed ? "▶" : "▼"}</span>
                   <span style={styles.categoryHeaderName}>{category.name}</span>
-
                   <InfoIcon text={getCategoryDescription(category.id)} />
                 </button>
 
@@ -920,14 +857,13 @@ function AutomationEditor({
                           }
                           onClick={() => {
                             const firstBlock = blocks[0];
+                            const collectionKey = getCollectionKeyFromKind(moduleKind);
+                            if (!collectionKey) return;
+
+                            const instance = createModuleInstance(moduleDefinition);
 
                             if (!firstBlock) {
                               const newBlock = createBlock();
-                              const collectionKey = getCollectionKeyFromKind(moduleKind);
-
-                              if (!collectionKey) return;
-
-                              const instance = createModuleInstance(moduleDefinition);
 
                               commitBlocks([
                                 {
@@ -939,11 +875,6 @@ function AutomationEditor({
                               setSelectedModuleId(instance.id);
                               return;
                             }
-
-                            const collectionKey = getCollectionKeyFromKind(moduleKind);
-                            if (!collectionKey) return;
-
-                            const instance = createModuleInstance(moduleDefinition);
 
                             commitBlocks(
                               blocks.map((block, index) =>
@@ -976,6 +907,14 @@ function AutomationEditor({
             );
           })}
         </div>
+      </div>
+
+      <div
+        style={styles.panelResizer}
+        onPointerDown={(event) => startPanelResize(event, "left")}
+        title="Resize modules panel"
+      >
+        <div style={styles.panelResizerLine} />
       </div>
 
       <main style={styles.workspace}>
@@ -1017,6 +956,7 @@ function AutomationEditor({
               handleBlockDragOver={handleBlockDragOver}
               handleBlockDrop={handleBlockDrop}
               clearDragState={clearDragState}
+              onRunBlock={onRunBlock}
             />
           ))}
         </div>
@@ -1034,849 +974,18 @@ function AutomationEditor({
         )}
       </main>
 
+      <div
+        style={styles.panelResizer}
+        onPointerDown={(event) => startPanelResize(event, "right")}
+        title="Resize settings panel"
+      >
+        <div style={styles.panelResizerLine} />
+      </div>
+
       {renderSettingsPanel()}
       {renderFloatingModule()}
     </div>
   );
 }
-
-function AutomationBlockCard({
-  block,
-  blockIndex,
-  dragData,
-  dropTarget,
-  renamingBlockId,
-  setRenamingBlockId,
-  updateBlockName,
-  copyBlock,
-  deleteBlock,
-  moveBlock,
-  totalBlocks,
-  toggleBlock,
-  renderBlockLane,
-  handleBlockDragStart,
-  handleBlockDragOver,
-  handleBlockDrop,
-  clearDragState,
-}) {
-  const blockTextColor = getReadableTextColor(automationTheme.blockColor);
-  const isDraggingThisBlock =
-    dragData?.source === "block" && dragData.blockId === block.id;
-
-  return (
-    <div
-      style={{
-        ...styles.blockCard,
-        backgroundColor: automationTheme.blockColor,
-        color: blockTextColor,
-        ...(isDraggingThisBlock ? styles.draggingItem : {}),
-      }}
-      onDragOver={(event) => handleBlockDragOver(event, block.id)}
-      onDrop={handleBlockDrop}
-    >
-      {dropTarget?.type === "block" &&
-        dropTarget.blockId === block.id &&
-        dropTarget.position === "before" && <div style={styles.blockDropLine} />}
-
-      <div style={styles.blockHeader}>
-        <div style={styles.blockTitleArea}>
-          <div style={styles.blockMoveButtons}>
-            <button
-              style={{
-                ...styles.blockMoveButton,
-                ...(blockIndex === 0 ? styles.disabledBlockMoveButton : {}),
-              }}
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
-                event.stopPropagation();
-                moveBlock(block.id, "up");
-              }}
-              title="Move block up"
-              disabled={blockIndex === 0}
-            >
-              ↑
-            </button>
-
-            <button
-              style={{
-                ...styles.blockMoveButton,
-                ...(blockIndex === totalBlocks - 1
-                  ? styles.disabledBlockMoveButton
-                  : {}),
-              }}
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
-                event.stopPropagation();
-                moveBlock(block.id, "down");
-              }}
-              title="Move block down"
-              disabled={blockIndex === totalBlocks - 1}
-            >
-              ↓
-            </button>
-          </div>
-
-          <div style={styles.blockNumber}>{blockIndex + 1}</div>
-
-          {renamingBlockId === block.id ? (
-            <input
-              style={styles.blockNameInput}
-              value={block.name}
-              autoFocus
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => event.stopPropagation()}
-              onChange={(event) => updateBlockName(block, event.target.value)}
-              onBlur={() => setRenamingBlockId(null)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") setRenamingBlockId(null);
-                if (event.key === "Escape") setRenamingBlockId(null);
-              }}
-            />
-          ) : (
-            <button
-              style={styles.blockNameButton}
-              onClick={() => toggleBlock(block)}
-              title="Open/close block"
-            >
-              {block.name}
-            </button>
-          )}
-
-          <span style={styles.blockStats}>
-  {(block.modules || []).length} module
-  {(block.modules || []).length === 1 ? "" : "s"}
-</span>
-        </div>
-
-        <div style={styles.blockButtons}>
-          <button
-            style={styles.renameButton}
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation();
-              setRenamingBlockId(block.id);
-            }}
-          >
-            Rename
-          </button>
-
-          <button
-            style={styles.iconButton}
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation();
-              copyBlock(block.id);
-            }}
-            title="Duplicate block"
-          >
-            ⧉
-          </button>
-
-          <button
-            style={styles.iconDeleteButton}
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation();
-              deleteBlock(block.id);
-            }}
-            title="Delete block"
-          >
-            ×
-          </button>
-
-          <button
-            style={styles.expandButton}
-            onClick={() => toggleBlock(block)}
-            title="Open/close block"
-          >
-            {block.isOpen ? "▾" : "▸"}
-          </button>
-        </div>
-      </div>
-
-      {dropTarget?.type === "block" &&
-        dropTarget.blockId === block.id &&
-        dropTarget.position === "after" && <div style={styles.blockDropLine} />}
-
-      {block.isOpen && (
-        <div style={styles.blockBody}>
-          {renderBlockLane({
-  block,
-  title: "Modules",
-  collectionKey: "modules",
-  moduleKind: "module",
-})}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AutomationModulePill({
-  module,
-  block,
-  moduleKind,
-  collectionKey,
-  index,
-  selectedModuleId,
-  setSelectedModuleId,
-  dragData,
-  dropTarget,
-  moduleWarningsById,
-  getCategoryColor,
-  copyModule,
-  deleteModule,
-  handleZoneDrop,
-  handleModuleDragOver,
-  startPlacedModulePointerDrag,
-}) {
-  const definition = moduleRegistry[module.type];
-  const isSelected = selectedModuleId === module.id;
-  const categoryColor = getCategoryColor(definition?.categoryId);
-  const textColor = getReadableTextColor(categoryColor);
-  const warnings = moduleWarningsById[module.id] || [];
-  const hasWarnings = warnings.length > 0;
-  const isDraggingThisModule =
-    dragData?.source === "placed-module" && dragData.moduleId === module.id;
-
-  const showBefore =
-    dropTarget?.type === collectionKey &&
-    dropTarget?.blockId === block.id &&
-    dropTarget?.moduleId === module.id &&
-    dropTarget?.position === "before";
-
-  const showAfter =
-    dropTarget?.type === collectionKey &&
-    dropTarget?.blockId === block.id &&
-    dropTarget?.moduleId === module.id &&
-    dropTarget?.position === "after";
-
-  return (
-    <div
-      style={styles.moduleWrap}
-      data-automation-module-id={module.id}
-      data-block-id={block.id}
-      data-collection-key={collectionKey}
-      onDragOver={(event) =>
-        handleModuleDragOver(event, block, module, moduleKind, index)
-      }
-      onDrop={(event) => handleZoneDrop(event, block, collectionKey)}
-    >
-      {showBefore && (
-        <div
-          style={{
-            ...styles.moduleDropLine,
-            top: -4,
-          }}
-        />
-      )}
-
-      <button
-        type="button"
-        style={{
-          ...styles.modulePill,
-          backgroundColor: categoryColor,
-          color: textColor,
-          ...(isSelected ? styles.selectedModulePill : {}),
-          ...(isDraggingThisModule ? styles.draggingItem : {}),
-        }}
-        onPointerDown={(event) =>
-          startPlacedModulePointerDrag(event, block, module, moduleKind, collectionKey)
-        }
-        onClick={(event) => {
-          event.stopPropagation();
-          setSelectedModuleId(module.id);
-        }}
-      >
-        <WarningIcon warnings={warnings} />
-
-        <span style={styles.pillName}>{definition?.name || module.type}</span>
-
-        <span style={styles.pillButtons}>
-          <button
-            type="button"
-            style={styles.pillMiniButton}
-            title="Duplicate module"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation();
-              copyModule(block, collectionKey, module);
-            }}
-          >
-            ⧉
-          </button>
-
-          <button
-            type="button"
-            style={styles.pillMiniDeleteButton}
-            title="Delete module"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation();
-              deleteModule(block, collectionKey, module.id);
-            }}
-          >
-            ×
-          </button>
-        </span>
-      </button>
-
-      {showAfter && (
-        <div
-          style={{
-            ...styles.moduleDropLine,
-            bottom: -4,
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-const styles = {
-  editorShell: {
-    display: "grid",
-    gridTemplateColumns: "260px minmax(0,1fr) 300px",
-    gap: "12px",
-    minHeight: 0,
-    height: "100%",
-  },
-
-  libraryPanel: {
-    backgroundColor: automationTheme.panelColor,
-    border: `1px solid ${automationTheme.borderColor}`,
-    borderRadius: "14px",
-    padding: "12px",
-    minHeight: 0,
-    overflow: "auto",
-  },
-
-  libraryHeader: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: "12px",
-  },
-
-  panelTitle: {
-    margin: 0,
-    fontSize: "18px",
-  },
-
-  panelSubtitle: {
-    color: "#999",
-    fontSize: "12px",
-    marginTop: "4px",
-  },
-
-  categoryList: {
-    display: "grid",
-    gap: "10px",
-  },
-
-  categoryCard: {
-    backgroundColor: "#161616",
-    border: "1px solid #2b2b2b",
-    borderRadius: "12px",
-    overflow: "hidden",
-  },
-
-  categoryHeader: {
-    width: "100%",
-    border: "none",
-    backgroundColor: "#202020",
-    color: "white",
-    padding: "10px",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    cursor: "pointer",
-    fontWeight: "bold",
-    textAlign: "left",
-  },
-
-  categoryHeaderName: {
-    flex: 1,
-  },
-
-  libraryModuleList: {
-    display: "grid",
-    gap: "7px",
-    padding: "8px",
-  },
-
-  libraryModule: {
-    border: "none",
-    borderRadius: "10px",
-    padding: "10px",
-    fontWeight: "bold",
-    cursor: "grab",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "8px",
-    textAlign: "left",
-  },
-
-  libraryModuleName: {
-    flex: 1,
-    minWidth: 0,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-
-  workspace: {
-    minHeight: 0,
-    display: "flex",
-    flexDirection: "column",
-    gap: "12px",
-  },
-
-  workspaceTop: {
-    backgroundColor: automationTheme.panelColor,
-    border: `1px solid ${automationTheme.borderColor}`,
-    borderRadius: "14px",
-    padding: "12px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  workspaceTitle: {
-    margin: 0,
-    fontSize: "22px",
-  },
-
-  workspaceSubtitle: {
-    color: "#999",
-    fontSize: "12px",
-    marginTop: "4px",
-  },
-
-  addBlockButton: {
-    backgroundColor: automationTheme.accentColor,
-    color: "white",
-    border: "none",
-    borderRadius: "10px",
-    padding: "9px 12px",
-    fontWeight: "bold",
-    cursor: "pointer",
-  },
-
-  blockList: {
-    minHeight: 0,
-    overflow: "auto",
-    display: "grid",
-    gap: "12px",
-    paddingRight: "4px",
-  },
-
-  emptyDrop: {
-    border: "1px dashed #444",
-    borderRadius: "14px",
-    padding: "30px",
-    color: "#888",
-    textAlign: "center",
-  },
-
-  blockCard: {
-    position: "relative",
-    border: "1px solid rgba(255,255,255,.08)",
-    borderRadius: "16px",
-    padding: "12px",
-    boxShadow: "0 10px 30px rgba(0,0,0,.25)",
-  },
-
-  blockHeader: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "12px",
-  },
-
-  blockTitleArea: {
-    flex: 1,
-    display: "grid",
-    gridTemplateColumns: "auto auto minmax(100px, 1fr) auto",
-    alignItems: "center",
-    gap: "8px",
-    minWidth: 0,
-  },
-
-  blockMoveButtons: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "2px",
-  },
-
-  blockMoveButton: {
-    width: "22px",
-    height: "18px",
-    border: "none",
-    borderRadius: "5px",
-    backgroundColor: "rgba(255,255,255,.12)",
-    color: "inherit",
-    cursor: "pointer",
-    fontSize: "10px",
-    lineHeight: 1,
-  },
-
-  disabledBlockMoveButton: {
-    opacity: 0.3,
-    cursor: "not-allowed",
-  },
-
-  blockNumber: {
-    width: "28px",
-    height: "28px",
-    borderRadius: "999px",
-    backgroundColor: "rgba(255,255,255,.12)",
-    display: "grid",
-    placeItems: "center",
-    fontWeight: "bold",
-  },
-
-  blockNameButton: {
-    border: "none",
-    background: "transparent",
-    color: "inherit",
-    textAlign: "left",
-    fontWeight: "bold",
-    fontSize: "16px",
-    minWidth: 0,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-    cursor: "pointer",
-  },
-
-  blockNameInput: {
-    minWidth: 0,
-    backgroundColor: "rgba(0,0,0,.2)",
-    color: "inherit",
-    border: "1px solid rgba(255,255,255,.25)",
-    borderRadius: "8px",
-    padding: "6px 8px",
-    fontWeight: "bold",
-    outline: "none",
-  },
-
-  blockStats: {
-    justifySelf: "center",
-    color: "#ddd",
-    fontSize: "12px",
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-
-  blockButtons: {
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-  },
-
-  renameButton: {
-    border: "none",
-    borderRadius: "8px",
-    padding: "7px 9px",
-    backgroundColor: "rgba(255,255,255,.12)",
-    color: "inherit",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  iconButton: {
-    width: "32px",
-    height: "32px",
-    border: "none",
-    borderRadius: "8px",
-    backgroundColor: "rgba(255,255,255,.12)",
-    color: "inherit",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  iconDeleteButton: {
-    width: "32px",
-    height: "32px",
-    border: "none",
-    borderRadius: "8px",
-    backgroundColor: "rgba(255,60,60,.18)",
-    color: "inherit",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  expandButton: {
-    width: "32px",
-    height: "32px",
-    border: "none",
-    borderRadius: "8px",
-    backgroundColor: "rgba(255,255,255,.12)",
-    color: "inherit",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  blockBody: {
-    marginTop: "12px",
-    display: "grid",
-    gridTemplateColumns: "1fr",
-    gap: "10px",
-  },
-
-  blockLane: {
-    minHeight: "120px",
-    backgroundColor: "rgba(0,0,0,.16)",
-    border: "1px solid rgba(255,255,255,.1)",
-    borderRadius: "12px",
-    padding: "10px",
-  },
-
-  availableDropSection: {
-    borderColor: "rgba(115,87,255,.55)",
-  },
-
-  activeDropSection: {
-    boxShadow: "0 0 0 1px rgba(115,87,255,.55)",
-  },
-
-  laneHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: "8px",
-  },
-
-  laneTitle: {
-    margin: 0,
-    fontSize: "13px",
-  },
-
-  pillList: {
-    display: "grid",
-    gap: "7px",
-  },
-
-  dropZone: {
-    minHeight: "40px",
-    border: "1px dashed rgba(255,255,255,.14)",
-    borderRadius: "10px",
-    display: "grid",
-    placeItems: "center",
-    color: "rgba(255,255,255,.55)",
-    fontSize: "12px",
-  },
-
-  availableDropZone: {
-    borderColor: "rgba(115,87,255,.6)",
-    color: "#d8d0ff",
-  },
-
-  moduleWrap: {
-    position: "relative",
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-  },
-
-  moduleDropLine: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    height: "3px",
-    borderRadius: "999px",
-    backgroundColor: "#7357ff",
-    boxShadow: "0 0 10px rgba(115,87,255,.75)",
-    pointerEvents: "none",
-    zIndex: 20,
-  },
-
-  modulePill: {
-    border: "none",
-    borderRadius: "10px",
-    padding: "9px",
-    display: "flex",
-    alignItems: "center",
-    gap: "7px",
-    cursor: "grab",
-    fontWeight: "bold",
-    minWidth: 0,
-  },
-
-  selectedModulePill: {
-    boxShadow: "0 0 0 2px rgba(255,255,255,.55)",
-  },
-
-  draggingItem: {
-    opacity: 0.45,
-  },
-
-  pillName: {
-    flex: 1,
-    minWidth: 0,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-    textAlign: "left",
-  },
-
-  pillButtons: {
-    display: "flex",
-    gap: "4px",
-  },
-
-  pillMiniButton: {
-    width: "24px",
-    height: "24px",
-    border: "none",
-    borderRadius: "6px",
-    backgroundColor: "rgba(0,0,0,.2)",
-    color: "inherit",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  pillMiniDeleteButton: {
-    width: "24px",
-    height: "24px",
-    border: "none",
-    borderRadius: "6px",
-    backgroundColor: "rgba(255,0,0,.2)",
-    color: "inherit",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  infoWrap: {
-    position: "relative",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#f2f2f2",
-  },
-
-  infoIcon: {
-    width: "16px",
-    height: "16px",
-    borderRadius: "999px",
-    display: "inline-grid",
-    placeItems: "center",
-    backgroundColor: "rgba(255,255,255,.25)",
-    fontSize: "11px",
-    fontWeight: "bold",
-    flexShrink: 0,
-  },
-
-  warningIconWrap: {
-    position: "relative",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  warningIcon: {
-    width: "18px",
-    height: "18px",
-    borderRadius: "999px",
-    display: "inline-grid",
-    placeItems: "center",
-    backgroundColor: "#ff3b3b",
-    color: "white",
-    fontSize: "12px",
-    fontWeight: "900",
-    flexShrink: 0,
-  },
-
-  smartTooltip: {
-    position: "fixed",
-    width: "260px",
-    backgroundColor: "#080808",
-    border: "1px solid #555",
-    borderRadius: "8px",
-    padding: "10px",
-    color: "#f2f2f2",
-    fontSize: "12px",
-    fontWeight: 400,
-    fontStyle: "normal",
-    textAlign: "left",
-    lineHeight: 1.45,
-    zIndex: 999999,
-    boxShadow: "0 10px 32px rgba(0,0,0,.75)",
-    pointerEvents: "none",
-    whiteSpace: "normal",
-    textTransform: "none",
-  },
-
-  smartWarningTooltip: {
-    borderColor: "#ff3b3b",
-  },
-
-  settingsPanel: {
-    backgroundColor: automationTheme.panelColor,
-    border: `1px solid ${automationTheme.borderColor}`,
-    borderRadius: "14px",
-    padding: "12px",
-    minHeight: 0,
-    overflow: "auto",
-  },
-
-  settingsTitle: {
-    margin: "0 0 12px",
-    fontSize: "18px",
-  },
-
-  settingsEmpty: {
-    color: "#888",
-    fontSize: "13px",
-    lineHeight: 1.45,
-  },
-
-  settingsModuleTopRow: {
-    marginBottom: "12px",
-    paddingBottom: "12px",
-    borderBottom: "1px solid #333",
-  },
-
-  settingsModuleName: {
-    margin: 0,
-    fontSize: "16px",
-  },
-
-  settingsModuleBlock: {
-    marginTop: "4px",
-    color: "#999",
-    fontSize: "12px",
-  },
-
-  floatingDrag: {
-    position: "fixed",
-    zIndex: 10000,
-    backgroundColor: "#111",
-    border: "1px solid #555",
-    borderRadius: "10px",
-    color: "white",
-    padding: "10px 12px",
-    pointerEvents: "none",
-    boxShadow: "0 12px 30px rgba(0,0,0,.45)",
-  },
-
-  blockDropLine: {
-    height: "3px",
-    borderRadius: "999px",
-    backgroundColor: "#7357ff",
-    boxShadow: "0 0 10px rgba(115,87,255,.65)",
-    margin: "6px 0",
-  },
-
-  runResult: {
-    margin: 0,
-    border: "1px solid",
-    borderRadius: "12px",
-    padding: "12px",
-    backgroundColor: "#101010",
-    overflow: "auto",
-  },
-};
 
 export default AutomationEditor;

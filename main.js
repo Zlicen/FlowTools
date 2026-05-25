@@ -2,6 +2,8 @@ const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 
 const path = require("path");
 
+const { registerSaveSystemIpc } = require("./backend/saveSystem");
+
 const { registerResolveDebugIpc } = require("./backend/resolveDebug");
 const { registerMediaLibraryIpc } = require("./backend/mediaLibrary");
 
@@ -93,6 +95,8 @@ app.whenReady().then(async () => {
   );
 
   registerFileDialogIpc(); // LUT browser
+
+  registerSaveSystemIpc(ipcMain);
 
   await initResolve();
 
