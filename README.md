@@ -21,7 +21,7 @@ AI-assisted development tools are used for parts of coding, brainstorming and do
 <br>
 
 ## Installation
-1. Download `FlowTools-0.1.0.exe`
+1. Download [FlowTools.exe](https://github.com/Zlicen/FlowTools/releases/)
 2. Run installer as Administrator
 3. Restart DaVinci Resolve
 4. Open Workspace → Workflow Integrations → FlowTools
