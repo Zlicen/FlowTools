@@ -31,4 +31,9 @@ AI-assisted development tools are used for parts of coding, brainstorming and do
 <br>
 
 ## Roadmap
-Roadmap coming soon.
+[] Append transitions, clips and other media to timeline.
+[] Add conditions, statements, variables etc. to automations.
+[] Add even more automations objects and settings.
+[] Media tab where you can create your own folders and power bins working with DaVinci Resolves folder system.
+[] Tools tab where you will find useful tools to customize and use.
+[] Update the overview tab with the new tools and folders.
